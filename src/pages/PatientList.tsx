@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { AppHeader } from '@/components/AppHeader';
 import { usePatientContext } from '@/context/PatientContext';
 import { Input } from '@/components/ui/input';
-import { ESITI_LABELS, Esito } from '@/types/patient';
+import { ESITI_LABELS, Esito, ClinicalData } from '@/types/patient';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,12 +79,10 @@ export default function PatientList() {
     return 'Paziente senza nome';
   };
 
-  const getStatusBadge = (clinical: { sbarResult: unknown; rawDictation: string }) => {
-    if (clinical.sbarResult) {
+  const getStatusBadge = (clinical: ClinicalData) => {
+    const hasSbar = clinical.situation || clinical.background || clinical.assessment || clinical.recommendation;
+    if (hasSbar) {
       return <Badge className="bg-primary/20 text-primary border-primary/30">SBAR</Badge>;
-    }
-    if (clinical.rawDictation) {
-      return <Badge variant="secondary">Note</Badge>;
     }
     return <Badge variant="outline" className="text-muted-foreground">Nuovo</Badge>;
   };
@@ -327,9 +325,9 @@ export default function PatientList() {
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
 
-                      {patient.clinical.rawDictation && (
+                      {patient.clinical.situation && (
                         <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                          {patient.clinical.rawDictation.substring(0, 80)}...
+                          {patient.clinical.situation.substring(0, 80)}...
                         </p>
                       )}
                     </CardContent>

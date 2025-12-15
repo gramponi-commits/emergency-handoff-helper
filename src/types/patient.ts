@@ -40,23 +40,14 @@ export interface PatientIdentity {
 /**
  * Vault B - Clinical Data (Encrypted Storage)
  * Stored in encrypted localStorage.
- * Anonymized before AI processing.
+ * Manual SBAR entry - no AI processing.
  */
 export interface ClinicalData {
-  rawDictation: string;
-  sbarResult: SBARResult | null;
-  differentialDx: string[];
-  timestamp: string;
-}
-
-/**
- * SBAR Formatted Output (Italian)
- */
-export interface SBARResult {
-  situation: string;    // Situazione
-  background: string;   // Anamnesi
-  assessment: string;   // Valutazione
+  situation: string;      // Situazione
+  background: string;     // Anamnesi
+  assessment: string;     // Valutazione
   recommendation: string; // Raccomandazione
+  timestamp: string;
 }
 
 /**
@@ -120,9 +111,10 @@ export const emptyPatientIdentity: PatientIdentity = {
  * Empty clinical data for initialization
  */
 export const emptyClinicalData: ClinicalData = {
-  rawDictation: '',
-  sbarResult: null,
-  differentialDx: [],
+  situation: '',
+  background: '',
+  assessment: '',
+  recommendation: '',
   timestamp: new Date().toISOString(),
 };
 
