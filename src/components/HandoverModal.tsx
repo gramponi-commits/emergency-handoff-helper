@@ -55,16 +55,16 @@ export function HandoverModal({
     await navigator.clipboard.writeText(qrData);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast({ title: 'Data copied', description: 'Paste this on receiving device' });
+    toast({ title: 'Dati copiati', description: 'Incolla sul dispositivo ricevente' });
   };
 
   const handleReceiveData = () => {
     if (!pastedData.trim()) {
-      toast({ title: 'No data', description: 'Please paste the handover data', variant: 'destructive' });
+      toast({ title: 'Nessun dato', description: 'Incolla i dati della consegna', variant: 'destructive' });
       return;
     }
     if (!receiverId.trim()) {
-      toast({ title: 'Receiver ID required', description: 'Enter your identifier', variant: 'destructive' });
+      toast({ title: 'ID ricevente richiesto', description: 'Inserisci il tuo identificativo', variant: 'destructive' });
       return;
     }
 
@@ -73,18 +73,18 @@ export function HandoverModal({
       onReceive(data, receiverId);
       onClose();
     } catch {
-      toast({ title: 'Invalid data', description: 'Could not parse handover data', variant: 'destructive' });
+      toast({ title: 'Dati non validi', description: 'Impossibile elaborare i dati della consegna', variant: 'destructive' });
     }
   };
 
   const handleConfirmSent = () => {
     if (!receiverId.trim()) {
-      toast({ title: 'Receiver ID required', description: 'Enter receiver identifier for audit', variant: 'destructive' });
+      toast({ title: 'ID ricevente richiesto', description: 'Inserisci identificativo ricevente per audit', variant: 'destructive' });
       return;
     }
     onSent(receiverId);
     onClose();
-    toast({ title: 'Handover logged', description: `Sent to: ${receiverId}` });
+    toast({ title: 'Consegna registrata', description: `Inviato a: ${receiverId}` });
   };
 
   return (
@@ -95,19 +95,19 @@ export function HandoverModal({
             {mode === 'send' ? (
               <>
                 <Send className="h-5 w-5 text-primary" />
-                Send Handover
+                Invia Consegna
               </>
             ) : (
               <>
                 <Download className="h-5 w-5 text-primary" />
-                Receive Handover
+                Ricevi Consegna
               </>
             )}
           </DialogTitle>
           <DialogDescription>
             {mode === 'send'
-              ? 'Share the QR code or copy data for the receiving doctor'
-              : 'Scan QR code or paste handover data'}
+              ? 'Condividi il QR code o copia i dati per il medico ricevente'
+              : 'Scansiona QR code o incolla i dati della consegna'}
           </DialogDescription>
         </DialogHeader>
 
@@ -135,22 +135,22 @@ export function HandoverModal({
             {/* Copy Button */}
             <Button onClick={handleCopyData} variant="outline" className="w-full gap-2">
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? 'Copied!' : 'Copy Data for Manual Transfer'}
+              {copied ? 'Copiato!' : 'Copia Dati per Trasferimento Manuale'}
             </Button>
 
             {/* Receiver ID for logging */}
             <div className="space-y-2">
-              <Label htmlFor="receiver">Receiver ID (for audit log)</Label>
+              <Label htmlFor="receiver">ID Ricevente (per audit log)</Label>
               <Input
                 id="receiver"
                 value={receiverId}
                 onChange={(e) => setReceiverId(e.target.value)}
-                placeholder="e.g., Dr. Smith"
+                placeholder="es. Dr. Rossi"
               />
             </div>
 
             <Button onClick={handleConfirmSent} className="w-full">
-              Confirm Handover Sent
+              Conferma Consegna Inviata
             </Button>
           </div>
         )}
@@ -161,34 +161,34 @@ export function HandoverModal({
             <div className="flex flex-col items-center justify-center h-48 bg-muted rounded-lg border-2 border-dashed border-border">
               <Camera className="h-12 w-12 text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground text-center px-4">
-                QR scanning requires camera access.<br />
-                Use paste option below instead.
+                Scansione QR richiede accesso fotocamera.<br />
+                Usa opzione incolla sotto.
               </p>
             </div>
 
             {/* Manual paste option */}
             <div className="space-y-2">
-              <Label htmlFor="paste">Paste Handover Data</Label>
+              <Label htmlFor="paste">Incolla Dati Consegna</Label>
               <Input
                 id="paste"
                 value={pastedData}
                 onChange={(e) => setPastedData(e.target.value)}
-                placeholder="Paste copied data here"
+                placeholder="Incolla i dati copiati qui"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="myId">Your ID (for audit log)</Label>
+              <Label htmlFor="myId">Il Tuo ID (per audit log)</Label>
               <Input
                 id="myId"
                 value={receiverId}
                 onChange={(e) => setReceiverId(e.target.value)}
-                placeholder="e.g., Dr. Jones"
+                placeholder="es. Dr. Bianchi"
               />
             </div>
 
             <Button onClick={handleReceiveData} className="w-full">
-              Import Patient Data
+              Importa Dati Paziente
             </Button>
           </div>
         )}

@@ -1,7 +1,8 @@
 // App Header Component
 // Security-focused header with session controls
 
-import { Shield, Trash2, AlertTriangle } from 'lucide-react';
+import { Shield, Trash2, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -16,75 +17,84 @@ import {
 } from '@/components/ui/alert-dialog';
 
 interface AppHeaderProps {
-  onWipeSession: (wipeClinical: boolean) => void;
+  onWipeSession: () => void;
+  onWipeIdentity?: () => void;
+  showBackButton?: boolean;
 }
 
-export function AppHeader({ onWipeSession }: AppHeaderProps) {
+export function AppHeader({ onWipeSession, onWipeIdentity, showBackButton }: AppHeaderProps) {
+  const navigate = useNavigate();
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+          <div 
+            className="p-2 rounded-lg bg-primary/10 border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors"
+            onClick={() => navigate('/')}
+          >
             <Shield className="h-6 w-6 text-primary" />
           </div>
           <div>
             <h1 className="font-bold text-lg tracking-tight">AcuteHandoff</h1>
-            <p className="text-xs text-muted-foreground">Secure ER Handover</p>
+            <p className="text-xs text-muted-foreground">Consegna PS Sicura</p>
           </div>
         </div>
 
         {/* Session Controls */}
         <div className="flex items-center gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear Identity
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear Patient Identity?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will wipe the patient name, age, and bed number from memory.
-                  Clinical notes will be preserved.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onWipeSession(false)}>
-                  Clear Identity
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {onWipeIdentity && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Cancella Identità</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancellare identità paziente?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Questo cancellerà nome, età e numero letto dalla memoria.
+                    Le note cliniche saranno mantenute.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={onWipeIdentity}>
+                    Cancella Identità
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm">
                 <AlertTriangle className="h-4 w-4 mr-2" />
-                Wipe All
+                <span className="hidden sm:inline">Cancella Tutto</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-destructive flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5" />
-                  Emergency Wipe
+                  Cancellazione Emergenza
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete ALL patient data including identity and clinical notes.
-                  This action cannot be undone.
+                  Questo eliminerà permanentemente TUTTI i dati dei pazienti incluse identità e note cliniche.
+                  Questa azione non può essere annullata.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() => onWipeSession(true)}
+                  onClick={onWipeSession}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  Wipe Everything
+                  Cancella Tutto
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

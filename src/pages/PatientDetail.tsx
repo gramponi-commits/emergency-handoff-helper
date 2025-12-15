@@ -1,8 +1,9 @@
-// AcuteHandoff - Main Application Page
-// Privacy-focused ER patient handover app
+// Patient Detail Page
+// Edit individual patient with SBAR generation
 
 import { useState } from 'react';
-import { Send, Download, ArrowRightLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Send, Download, ArrowLeft, Users } from 'lucide-react';
 import { usePatientState } from '@/hooks/usePatientState';
 import { AppHeader } from '@/components/AppHeader';
 import { IdentityZone } from '@/components/IdentityZone';
@@ -12,8 +13,10 @@ import { HandoverModal } from '@/components/HandoverModal';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
-const Index = () => {
+export default function PatientDetail() {
+  const navigate = useNavigate();
   const {
+    currentPatient,
     identity,
     clinical,
     sessionToken,
@@ -21,7 +24,8 @@ const Index = () => {
     updateIdentity,
     updateClinical,
     generateSBAR,
-    wipeSession,
+    wipeCurrentIdentity,
+    wipeAllSession,
     prepareHandoverPayload,
     receiveHandover,
     logHandover,
@@ -29,15 +33,46 @@ const Index = () => {
 
   const [handoverMode, setHandoverMode] = useState<'send' | 'receive' | null>(null);
 
-  const handleOpenSend = () => setHandoverMode('send');
-  const handleOpenReceive = () => setHandoverMode('receive');
-  const handleCloseHandover = () => setHandoverMode(null);
+  // Redirect to list if no patient selected
+  if (!currentPatient) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <AppHeader onWipeSession={wipeAllSession} />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <p className="text-muted-foreground">Nessun paziente selezionato</p>
+            <Button onClick={() => navigate('/')} className="gap-2">
+              <Users className="h-4 w-4" />
+              Vai alla lista pazienti
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <AppHeader onWipeSession={wipeSession} />
+      <AppHeader 
+        onWipeSession={wipeAllSession} 
+        onWipeIdentity={wipeCurrentIdentity}
+        showBackButton 
+      />
 
-      <main className="flex-1 container mx-auto px-4 py-6 space-y-6 max-w-4xl">
+      {/* Back to list button */}
+      <div className="container mx-auto px-4 pt-4 max-w-4xl">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => navigate('/')}
+          className="gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Torna alla lista
+        </Button>
+      </div>
+
+      <main className="flex-1 container mx-auto px-4 py-4 space-y-6 max-w-4xl">
         {/* Identity Zone - RAM Only */}
         <IdentityZone identity={identity} onUpdate={updateIdentity} />
 
@@ -55,9 +90,9 @@ const Index = () => {
             <Separator className="my-6" />
             <div className="space-y-4">
               <h2 className="font-semibold text-lg flex items-center gap-2">
-                <span className="text-primary">SBAR Summary</span>
+                <span className="text-primary">Riepilogo SBAR</span>
                 <span className="text-xs text-muted-foreground font-normal">
-                  AI-formatted output
+                  Output AI formattato
                 </span>
               </h2>
               <SBAROutput sbar={clinical.sbarResult} differentialDx={clinical.differentialDx} />
@@ -66,39 +101,31 @@ const Index = () => {
         )}
       </main>
 
-      {/* Floating Handover Button */}
+      {/* Floating Handover Buttons */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-2">
         <Button
-          onClick={handleOpenReceive}
+          onClick={() => setHandoverMode('receive')}
           variant="outline"
           size="lg"
           className="shadow-lg gap-2"
         >
           <Download className="h-5 w-5" />
-          Receive
+          Ricevi
         </Button>
         <Button
-          onClick={handleOpenSend}
+          onClick={() => setHandoverMode('send')}
           size="lg"
           className="shadow-lg shadow-primary/25 gap-2"
         >
           <Send className="h-5 w-5" />
-          Handover
+          Consegna
         </Button>
-      </div>
-
-      {/* Mobile bottom hint */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background to-transparent pointer-events-none">
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <ArrowRightLeft className="h-4 w-4" />
-          <span>Tap buttons to transfer patient</span>
-        </div>
       </div>
 
       {/* Handover Modal */}
       <HandoverModal
         open={handoverMode !== null}
-        onClose={handleCloseHandover}
+        onClose={() => setHandoverMode(null)}
         mode={handoverMode}
         payload={handoverMode === 'send' ? prepareHandoverPayload() : null}
         sessionToken={sessionToken}
@@ -107,6 +134,4 @@ const Index = () => {
       />
     </div>
   );
-};
-
-export default Index;
+}
