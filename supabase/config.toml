@@ -1,0 +1,4 @@
+project_id = "lwukavdqhibrsjorvknf"
+
+[functions.generate-sbar]
+verify_jwt = false
