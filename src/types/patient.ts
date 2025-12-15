@@ -60,12 +60,23 @@ export interface SBARResult {
 }
 
 /**
+ * Patient Reminder/Alarm
+ */
+export interface PatientReminder {
+  id: string;
+  time: string; // HH:mm format
+  message: string;
+  triggered: boolean;
+}
+
+/**
  * Complete Patient Record for list management
  */
 export interface PatientRecord {
   id: string;
   identity: PatientIdentity;
   clinical: ClinicalData;
+  reminders: PatientReminder[];
   createdAt: string;
   updatedAt: string;
 }
@@ -127,6 +138,7 @@ export function createPatientRecord(
     id: crypto.randomUUID(),
     identity,
     clinical,
+    reminders: [],
     createdAt: now,
     updatedAt: now,
   };

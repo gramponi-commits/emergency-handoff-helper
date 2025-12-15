@@ -1,7 +1,7 @@
 // Storage Service for AcuteHandoff
 // Handles encrypted persistence of Vault B (Clinical Data) and Patient List
 
-import { ClinicalData, HandoverLogEntry, PatientRecord } from '@/types/patient';
+import { ClinicalData, HandoverLogEntry, PatientRecord, PatientReminder } from '@/types/patient';
 import { encryptData, decryptData } from './crypto';
 
 const CLINICAL_DATA_KEY = 'acutehandoff-clinical';
@@ -50,14 +50,15 @@ export function clearClinicalData(): void {
  */
 export async function savePatientList(patients: PatientRecord[]): Promise<void> {
   try {
-    // Store only clinical data with IDs - identities stay in RAM
-    const clinicalOnly = patients.map(p => ({
+    // Store clinical data and reminders with IDs - identities stay in RAM
+    const dataToStore = patients.map(p => ({
       id: p.id,
       clinical: p.clinical,
+      reminders: p.reminders,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     }));
-    const encrypted = await encryptData(JSON.stringify(clinicalOnly));
+    const encrypted = await encryptData(JSON.stringify(dataToStore));
     localStorage.setItem(PATIENT_LIST_KEY, encrypted);
   } catch (error) {
     console.error('Failed to save patient list:', error);
@@ -70,6 +71,7 @@ export async function savePatientList(patients: PatientRecord[]): Promise<void> 
 export async function loadPatientListClinical(): Promise<Array<{
   id: string;
   clinical: ClinicalData;
+  reminders?: PatientReminder[];
   createdAt: string;
   updatedAt: string;
 }>> {
