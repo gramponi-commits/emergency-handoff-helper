@@ -2,13 +2,13 @@
 // Displays all patients in a clickable grid
 
 import { useNavigate } from 'react-router-dom';
-import { Plus, User, FileText, Clock, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, User, Trash2, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AppHeader } from '@/components/AppHeader';
-import { usePatientState } from '@/hooks/usePatientState';
+import { usePatientContext } from '@/context/PatientContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +30,7 @@ export default function PatientList() {
     selectPatient, 
     getIdentity,
     wipeAllSession 
-  } = usePatientState();
+  } = usePatientContext();
 
   const handleAddPatient = () => {
     const newId = addPatient();
@@ -43,8 +43,7 @@ export default function PatientList() {
     navigate('/patient');
   };
 
-  const handleRemovePatient = (e: React.MouseEvent, patientId: string) => {
-    e.stopPropagation();
+  const handleRemovePatient = (patientId: string) => {
     removePatient(patientId);
   };
 
@@ -67,7 +66,7 @@ export default function PatientList() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <AppHeader onWipeSession={wipeAllSession} showBackButton={false} />
+      <AppHeader onWipeSession={wipeAllSession} />
 
       <main className="flex-1 container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
@@ -139,7 +138,7 @@ export default function PatientList() {
                               <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Rimuovere paziente?</AlertDialogTitle>
                               <AlertDialogDescription>
@@ -149,7 +148,10 @@ export default function PatientList() {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Annulla</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={(e) => handleRemovePatient(e as unknown as React.MouseEvent, patient.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemovePatient(patient.id);
+                                }}
                                 className="bg-destructive text-destructive-foreground"
                               >
                                 Rimuovi

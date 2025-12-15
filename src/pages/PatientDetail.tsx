@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, Download, ArrowLeft, Users } from 'lucide-react';
-import { usePatientState } from '@/hooks/usePatientState';
+import { usePatientContext } from '@/context/PatientContext';
 import { AppHeader } from '@/components/AppHeader';
 import { IdentityZone } from '@/components/IdentityZone';
 import { ClinicalZone } from '@/components/ClinicalZone';
@@ -29,7 +29,7 @@ export default function PatientDetail() {
     prepareHandoverPayload,
     receiveHandover,
     logHandover,
-  } = usePatientState();
+  } = usePatientContext();
 
   const [handoverMode, setHandoverMode] = useState<'send' | 'receive' | null>(null);
 
@@ -56,7 +56,6 @@ export default function PatientDetail() {
       <AppHeader 
         onWipeSession={wipeAllSession} 
         onWipeIdentity={wipeCurrentIdentity}
-        showBackButton 
       />
 
       {/* Back to list button */}
