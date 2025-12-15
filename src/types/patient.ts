@@ -26,13 +26,24 @@ export interface ClinicalData {
 }
 
 /**
- * SBAR Formatted Output
+ * SBAR Formatted Output (Italian)
  */
 export interface SBARResult {
-  situation: string;
-  background: string;
-  assessment: string;
-  recommendation: string;
+  situation: string;    // Situazione
+  background: string;   // Anamnesi
+  assessment: string;   // Valutazione
+  recommendation: string; // Raccomandazione
+}
+
+/**
+ * Complete Patient Record for list management
+ */
+export interface PatientRecord {
+  id: string;
+  identity: PatientIdentity;
+  clinical: ClinicalData;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -75,3 +86,20 @@ export const emptyClinicalData: ClinicalData = {
   differentialDx: [],
   timestamp: new Date().toISOString(),
 };
+
+/**
+ * Create a new patient record
+ */
+export function createPatientRecord(
+  identity: PatientIdentity = emptyPatientIdentity,
+  clinical: ClinicalData = emptyClinicalData
+): PatientRecord {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    identity,
+    clinical,
+    createdAt: now,
+    updatedAt: now,
+  };
+}

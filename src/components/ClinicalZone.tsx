@@ -18,14 +18,14 @@ export function ClinicalZone({ clinical, onUpdate, onGenerateSBAR, isGenerating 
   return (
     <div className="zone-clinical rounded-lg p-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2 text-primary">
           <FileText className="h-5 w-5" />
           <span className="font-semibold text-sm uppercase tracking-wide">
-            Clinical Context
+            Contesto Clinico
           </span>
           <span className="text-xs text-muted-foreground">
-            Encrypted storage
+            Storage criptato
           </span>
         </div>
         
@@ -38,12 +38,12 @@ export function ClinicalZone({ clinical, onUpdate, onGenerateSBAR, isGenerating 
           {isGenerating ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Generating...
+              Generazione...
             </>
           ) : (
             <>
               <Sparkles className="h-4 w-4" />
-              Generate SBAR
+              Genera SBAR
             </>
           )}
         </Button>
@@ -52,17 +52,19 @@ export function ClinicalZone({ clinical, onUpdate, onGenerateSBAR, isGenerating 
       {/* Dictation Input */}
       <div className="space-y-2">
         <Label htmlFor="dictation" className="text-muted-foreground">
-          Clinical Notes / Dictation
+          Note Cliniche / Dettatura
         </Label>
         <Textarea
           id="dictation"
           value={clinical.rawDictation}
           onChange={(e) => onUpdate({ rawDictation: e.target.value })}
-          placeholder="Enter clinical notes, history, examination findings, test results..."
+          placeholder="Inserisci note cliniche, anamnesi, esame obiettivo, esami di laboratorio (PCR, WBC, etc.), esami strumentali...
+
+Abbreviazioni supportate: SFD, R, OB/R, OBI/R, OB/D, OBI/D, D, PS, PA, FC, FR, SpO2, TC, GCS, ECG, Rx, TAC, RM, EGA, PCR, WBC, Hb, Plt, Cr, etc."
           className="min-h-[200px] bg-background/50 border-primary/30 focus:border-primary resize-none scrollbar-thin"
         />
         <p className="text-xs text-muted-foreground">
-          PII is automatically stripped before AI processing
+          I dati personali vengono automaticamente rimossi prima dell&apos;elaborazione AI
         </p>
       </div>
     </div>

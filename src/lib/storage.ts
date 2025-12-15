@@ -1,15 +1,15 @@
 // Storage Service for AcuteHandoff
-// Handles encrypted persistence of Vault B (Clinical Data) and Audit Logs
+// Handles encrypted persistence of Vault B (Clinical Data) and Patient List
 
-import { ClinicalData, HandoverLogEntry } from '@/types/patient';
+import { ClinicalData, HandoverLogEntry, PatientRecord } from '@/types/patient';
 import { encryptData, decryptData } from './crypto';
 
 const CLINICAL_DATA_KEY = 'acutehandoff-clinical';
 const AUDIT_LOG_KEY = 'acutehandoff-audit';
+const PATIENT_LIST_KEY = 'acutehandoff-patients';
 
 /**
  * Save clinical data to encrypted localStorage
- * Security: Data is encrypted before storage
  */
 export async function saveClinicalData(data: ClinicalData): Promise<void> {
   try {
@@ -45,8 +45,48 @@ export function clearClinicalData(): void {
 }
 
 /**
+ * Save patient list (clinical data only - identities in RAM)
+ * Security: Only clinical portions are encrypted and stored
+ */
+export async function savePatientList(patients: PatientRecord[]): Promise<void> {
+  try {
+    // Store only clinical data with IDs - identities stay in RAM
+    const clinicalOnly = patients.map(p => ({
+      id: p.id,
+      clinical: p.clinical,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
+    const encrypted = await encryptData(JSON.stringify(clinicalOnly));
+    localStorage.setItem(PATIENT_LIST_KEY, encrypted);
+  } catch (error) {
+    console.error('Failed to save patient list:', error);
+  }
+}
+
+/**
+ * Load patient list clinical data
+ */
+export async function loadPatientListClinical(): Promise<Array<{
+  id: string;
+  clinical: ClinicalData;
+  createdAt: string;
+  updatedAt: string;
+}>> {
+  try {
+    const encrypted = localStorage.getItem(PATIENT_LIST_KEY);
+    if (!encrypted) return [];
+    
+    const decrypted = await decryptData(encrypted);
+    return JSON.parse(decrypted);
+  } catch (error) {
+    console.error('Failed to load patient list:', error);
+    return [];
+  }
+}
+
+/**
  * Append entry to audit log
- * Security: Only SHA-256 hashes are stored, never raw patient data
  */
 export function appendAuditLog(entry: HandoverLogEntry): void {
   try {
@@ -71,9 +111,10 @@ export function getAuditLog(): HandoverLogEntry[] {
 }
 
 /**
- * Clear all stored data (for full session wipe)
+ * Clear all stored data
  */
 export function clearAllStorage(): void {
   localStorage.removeItem(CLINICAL_DATA_KEY);
+  localStorage.removeItem(PATIENT_LIST_KEY);
   sessionStorage.removeItem('acutehandoff-key');
 }

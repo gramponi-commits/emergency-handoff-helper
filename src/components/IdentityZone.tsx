@@ -18,10 +18,10 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
       <div className="flex items-center gap-2 text-destructive">
         <AlertTriangle className="h-5 w-5 pulse-warning" />
         <span className="font-semibold text-sm uppercase tracking-wide">
-          Identity (RAM Only)
+          Identità (Solo RAM)
         </span>
         <span className="text-xs text-muted-foreground ml-auto">
-          Wiped on close
+          Cancellato alla chiusura
         </span>
       </div>
 
@@ -30,40 +30,40 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
         <div className="col-span-2 space-y-2">
           <Label htmlFor="name" className="text-muted-foreground flex items-center gap-2">
             <User className="h-3 w-3" />
-            Patient Name
+            Nome Paziente
           </Label>
           <Input
             id="name"
             value={identity.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
-            placeholder="Enter patient name"
+            placeholder="Inserisci nome paziente"
             className="bg-background/50 border-destructive/30 focus:border-destructive"
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="age" className="text-muted-foreground">
-            Age
+            Età
           </Label>
           <Input
             id="age"
             type="number"
             value={identity.age || ''}
             onChange={(e) => onUpdate({ age: e.target.value ? parseInt(e.target.value) : null })}
-            placeholder="Age"
+            placeholder="Età"
             className="bg-background/50 border-destructive/30 focus:border-destructive"
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="bed" className="text-muted-foreground">
-            Bed #
+            Letto #
           </Label>
           <Input
             id="bed"
             value={identity.bedNumber}
             onChange={(e) => onUpdate({ bedNumber: e.target.value })}
-            placeholder="e.g., A-12"
+            placeholder="es. A-12"
             className="bg-background/50 border-destructive/30 focus:border-destructive"
           />
         </div>

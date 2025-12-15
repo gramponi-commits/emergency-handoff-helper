@@ -1,5 +1,5 @@
 // SBAR Output Component
-// Displays AI-formatted clinical notes
+// Displays AI-formatted clinical notes in Italian
 
 import { SBARResult } from '@/types/patient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,7 @@ export function SBAROutput({ sbar, differentialDx }: SBAROutputProps) {
   if (!sbar) {
     return (
       <div className="flex items-center justify-center h-48 text-muted-foreground">
-        <p>Generate SBAR to see formatted output</p>
+        <p>Genera SBAR per vedere il risultato formattato</p>
       </div>
     );
   }
@@ -28,7 +28,7 @@ export function SBAROutput({ sbar, differentialDx }: SBAROutputProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-zone-situation" />
-              <span className="text-zone-situation">Situation</span>
+              <span className="text-zone-situation">Situazione</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -40,7 +40,7 @@ export function SBAROutput({ sbar, differentialDx }: SBAROutputProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Clock className="h-4 w-4 text-zone-background" />
-              <span className="text-zone-background">Background</span>
+              <span className="text-zone-background">Anamnesi</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -52,7 +52,7 @@ export function SBAROutput({ sbar, differentialDx }: SBAROutputProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Stethoscope className="h-4 w-4 text-zone-assessment" />
-              <span className="text-zone-assessment">Assessment</span>
+              <span className="text-zone-assessment">Valutazione</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -64,7 +64,7 @@ export function SBAROutput({ sbar, differentialDx }: SBAROutputProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <ArrowRight className="h-4 w-4 text-zone-recommendation" />
-              <span className="text-zone-recommendation">Recommendation</span>
+              <span className="text-zone-recommendation">Raccomandazione</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -78,7 +78,7 @@ export function SBAROutput({ sbar, differentialDx }: SBAROutputProps) {
         <Card className="bg-card/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">
-              Differential Diagnoses
+              Diagnosi Differenziali
             </CardTitle>
           </CardHeader>
           <CardContent>
