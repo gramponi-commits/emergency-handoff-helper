@@ -1,5 +1,5 @@
 // Patient Detail Page
-// Edit individual patient with SBAR generation
+// Edit individual patient with manual SBAR entry
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,10 +8,8 @@ import { usePatientContext } from '@/context/PatientContext';
 import { AppHeader } from '@/components/AppHeader';
 import { IdentityZone } from '@/components/IdentityZone';
 import { ClinicalZone } from '@/components/ClinicalZone';
-import { SBAROutput } from '@/components/SBAROutput';
 import { HandoverModal } from '@/components/HandoverModal';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 
 export default function PatientDetail() {
   const navigate = useNavigate();
@@ -20,10 +18,8 @@ export default function PatientDetail() {
     identity,
     clinical,
     sessionToken,
-    isGenerating,
     updateIdentity,
     updateClinical,
-    generateSBAR,
     wipeCurrentIdentity,
     wipeAllSession,
     prepareHandoverPayload,
@@ -75,29 +71,11 @@ export default function PatientDetail() {
         {/* Identity Zone - RAM Only */}
         <IdentityZone identity={identity} onUpdate={updateIdentity} />
 
-        {/* Clinical Zone - Encrypted Storage */}
+        {/* Clinical Zone - Manual SBAR */}
         <ClinicalZone
           clinical={clinical}
           onUpdate={updateClinical}
-          onGenerateSBAR={generateSBAR}
-          isGenerating={isGenerating}
         />
-
-        {/* SBAR Output */}
-        {clinical.sbarResult && (
-          <>
-            <Separator className="my-6" />
-            <div className="space-y-4">
-              <h2 className="font-semibold text-lg flex items-center gap-2">
-                <span className="text-primary">Riepilogo SBAR</span>
-                <span className="text-xs text-muted-foreground font-normal">
-                  Output AI formattato
-                </span>
-              </h2>
-              <SBAROutput sbar={clinical.sbarResult} differentialDx={clinical.differentialDx} />
-            </div>
-          </>
-        )}
       </main>
 
       {/* Floating Handover Buttons */}

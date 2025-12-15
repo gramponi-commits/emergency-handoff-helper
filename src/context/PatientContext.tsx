@@ -1,5 +1,5 @@
 // Patient Context Provider
-// Shares patient state across all pages
+// Shares patient state across all pages - LOCAL ONLY, no AI
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { 
@@ -13,8 +13,7 @@ import {
   HandoverPayload 
 } from '@/types/patient';
 import { savePatientList, loadPatientListClinical, appendAuditLog, clearAllStorage } from '@/lib/storage';
-import { generateHash, generateSessionToken, sanitizeForAI } from '@/lib/crypto';
-import { supabase } from '@/integrations/supabase/client';
+import { generateHash, generateSessionToken } from '@/lib/crypto';
 import { toast } from '@/hooks/use-toast';
 
 interface PatientContextType {
@@ -29,11 +28,9 @@ interface PatientContextType {
   clinical: ClinicalData;
   updateIdentity: (updates: Partial<PatientIdentity>) => void;
   updateClinical: (updates: Partial<ClinicalData>) => void;
-  generateSBAR: () => Promise<void>;
   wipeCurrentIdentity: () => void;
   wipeAllSession: () => void;
   sessionToken: string;
-  isGenerating: boolean;
   prepareHandoverPayload: () => HandoverPayload | null;
   receiveHandover: (payload: HandoverPayload, receiverId: string) => Promise<void>;
   logHandover: (receiverId: string) => Promise<void>;
@@ -48,7 +45,6 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   const [patients, setPatients] = useState<PatientRecord[]>([]);
   const [currentPatientId, setCurrentPatientId] = useState<string | null>(null);
   const identitiesRef = useRef<Map<string, PatientIdentity>>(new Map());
-  const [isGenerating, setIsGenerating] = useState(false);
   const [sessionToken, setSessionToken] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -111,8 +107,8 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       });
     };
 
-    const interval = setInterval(checkAlarms, 30000); // Check every 30 seconds
-    checkAlarms(); // Initial check
+    const interval = setInterval(checkAlarms, 30000);
+    checkAlarms();
     
     return () => clearInterval(interval);
   }, [patients]);
@@ -172,47 +168,6 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     }));
   }, [currentPatientId]);
 
-  const generateSBAR = useCallback(async () => {
-    if (!currentPatient || !currentPatient.clinical.rawDictation.trim()) {
-      toast({
-        title: 'Nessuna nota clinica',
-        description: 'Inserisci le note cliniche prima di generare lo SBAR.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const sanitizedText = sanitizeForAI(currentPatient.clinical.rawDictation);
-      
-      const { data, error } = await supabase.functions.invoke('generate-sbar', {
-        body: { clinicalNotes: sanitizedText },
-      });
-
-      if (error) throw error;
-
-      await updateClinical({
-        sbarResult: data.sbar,
-        differentialDx: data.differentialDx || [],
-      });
-
-      toast({
-        title: 'SBAR Generato',
-        description: 'Note cliniche formattate con successo.',
-      });
-    } catch (error) {
-      console.error('SBAR generation failed:', error);
-      toast({
-        title: 'Generazione fallita',
-        description: 'Impossibile generare SBAR. Mostrando note originali.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [currentPatient, updateClinical]);
-
   const wipeCurrentIdentity = useCallback(() => {
     if (!currentPatientId) return;
     identitiesRef.current.set(currentPatientId, { ...emptyPatientIdentity });
@@ -260,7 +215,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     setPatients(prev => [...prev, newPatient]);
     setCurrentPatientId(newPatient.id);
 
-    const hashInput = `${payload.identity.name}|${payload.clinical.rawDictation}|${payload.timestamp}`;
+    const hashInput = `${payload.identity.name}|${payload.clinical.situation}|${payload.timestamp}`;
     const hash = await generateHash(hashInput);
     
     appendAuditLog({
@@ -279,7 +234,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   const logHandover = useCallback(async (receiverId: string) => {
     if (!currentPatient) return;
     const identity = identitiesRef.current.get(currentPatient.id) || emptyPatientIdentity;
-    const hashInput = `${identity.name}|${currentPatient.clinical.rawDictation}|${new Date().toISOString()}`;
+    const hashInput = `${identity.name}|${currentPatient.clinical.situation}|${new Date().toISOString()}`;
     const hash = await generateHash(hashInput);
     
     appendAuditLog({
@@ -339,11 +294,9 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       clinical,
       updateIdentity,
       updateClinical,
-      generateSBAR,
       wipeCurrentIdentity,
       wipeAllSession,
       sessionToken,
-      isGenerating,
       prepareHandoverPayload,
       receiveHandover,
       logHandover,
