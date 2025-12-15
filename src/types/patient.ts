@@ -2,6 +2,26 @@
 // Security: These types enforce the split-stream data architecture
 
 /**
+ * Common comorbidities flags
+ */
+export const COMORBIDITIES = ['BPCO', 'IRC', 'DM2', 'IPA', 'CIC', 'FA'] as const;
+export type Comorbidity = typeof COMORBIDITIES[number];
+
+/**
+ * Possible outcomes for ER visit
+ */
+export const ESITI = ['D', 'OB', 'OB/D', 'OB/R', 'R'] as const;
+export type Esito = typeof ESITI[number];
+
+export const ESITI_LABELS: Record<Esito, string> = {
+  'D': 'Dimesso',
+  'OB': 'Osservazione Breve',
+  'OB/D': 'OBI → Dimissione',
+  'OB/R': 'OBI → Ricovero',
+  'R': 'Ricovero',
+};
+
+/**
  * Vault A - Patient Identity (RAM ONLY)
  * NEVER persisted to storage. Wiped on app close/refresh.
  * Only transferred via encrypted QR code.
@@ -11,6 +31,10 @@ export interface PatientIdentity {
   age: number | null;
   bedNumber: string;
   admissionDate: string;
+  comorbidities: Comorbidity[];
+  allergico: boolean;
+  sociale: boolean;
+  esito: Esito | null;
 }
 
 /**
@@ -75,6 +99,10 @@ export const emptyPatientIdentity: PatientIdentity = {
   age: null,
   bedNumber: '',
   admissionDate: new Date().toISOString().split('T')[0],
+  comorbidities: [],
+  allergico: false,
+  sociale: false,
+  esito: null,
 };
 
 /**
