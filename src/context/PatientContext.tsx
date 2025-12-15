@@ -1,7 +1,7 @@
-// Multi-Patient State Management Hook
-// Manages multiple patients with Vault A (RAM) and Vault B (Encrypted Storage)
+// Patient Context Provider
+// Shares patient state across all pages
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { 
   PatientIdentity, 
   ClinicalData, 
@@ -16,28 +16,44 @@ import { generateHash, generateSessionToken, sanitizeForAI } from '@/lib/crypto'
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
-export function usePatientState() {
-  // All patients - identities in RAM, clinical encrypted
+interface PatientContextType {
+  patients: PatientRecord[];
+  currentPatientId: string | null;
+  currentPatient: PatientRecord | null;
+  addPatient: () => string;
+  removePatient: (patientId: string) => void;
+  selectPatient: (patientId: string | null) => void;
+  getIdentity: (patientId: string) => PatientIdentity;
+  identity: PatientIdentity;
+  clinical: ClinicalData;
+  updateIdentity: (updates: Partial<PatientIdentity>) => void;
+  updateClinical: (updates: Partial<ClinicalData>) => void;
+  generateSBAR: () => Promise<void>;
+  wipeCurrentIdentity: () => void;
+  wipeAllSession: () => void;
+  sessionToken: string;
+  isGenerating: boolean;
+  prepareHandoverPayload: () => HandoverPayload | null;
+  receiveHandover: (payload: HandoverPayload, receiverId: string) => Promise<void>;
+  logHandover: (receiverId: string) => Promise<void>;
+}
+
+const PatientContext = createContext<PatientContextType | null>(null);
+
+export function PatientProvider({ children }: { children: ReactNode }) {
   const [patients, setPatients] = useState<PatientRecord[]>([]);
   const [currentPatientId, setCurrentPatientId] = useState<string | null>(null);
-  
-  // Identities stored separately in RAM only (Map for quick lookup)
   const identitiesRef = useRef<Map<string, PatientIdentity>>(new Map());
-  
-  // UI State
   const [isGenerating, setIsGenerating] = useState(false);
   const [sessionToken, setSessionToken] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Current patient helpers
   const currentPatient = patients.find(p => p.id === currentPatientId) || null;
 
-  // Load clinical data from storage on mount
   useEffect(() => {
     const loadData = async () => {
       const savedClinical = await loadPatientListClinical();
       if (savedClinical.length > 0) {
-        // Reconstruct patients with empty identities (RAM was cleared)
         const loadedPatients: PatientRecord[] = savedClinical.map(c => ({
           id: c.id,
           identity: emptyPatientIdentity,
@@ -46,7 +62,6 @@ export function usePatientState() {
           updatedAt: c.updatedAt,
         }));
         setPatients(loadedPatients);
-        // Initialize identities map with empty values
         loadedPatients.forEach(p => {
           identitiesRef.current.set(p.id, emptyPatientIdentity);
         });
@@ -57,23 +72,20 @@ export function usePatientState() {
     loadData();
   }, []);
 
-  // Save clinical data whenever patients change
   useEffect(() => {
     if (isLoaded && patients.length > 0) {
       savePatientList(patients);
     }
   }, [patients, isLoaded]);
 
-  // Add new patient
   const addPatient = useCallback(() => {
     const newPatient = createPatientRecord();
-    identitiesRef.current.set(newPatient.id, emptyPatientIdentity);
+    identitiesRef.current.set(newPatient.id, { ...emptyPatientIdentity });
     setPatients(prev => [...prev, newPatient]);
     setCurrentPatientId(newPatient.id);
     return newPatient.id;
   }, []);
 
-  // Remove patient
   const removePatient = useCallback((patientId: string) => {
     identitiesRef.current.delete(patientId);
     setPatients(prev => prev.filter(p => p.id !== patientId));
@@ -82,12 +94,10 @@ export function usePatientState() {
     }
   }, [currentPatientId]);
 
-  // Select patient
   const selectPatient = useCallback((patientId: string | null) => {
     setCurrentPatientId(patientId);
   }, []);
 
-  // Update current patient identity (RAM only)
   const updateIdentity = useCallback((updates: Partial<PatientIdentity>) => {
     if (!currentPatientId) return;
     
@@ -95,7 +105,6 @@ export function usePatientState() {
     const updated = { ...current, ...updates };
     identitiesRef.current.set(currentPatientId, updated);
     
-    // Update in patients array too (for display)
     setPatients(prev => prev.map(p => 
       p.id === currentPatientId 
         ? { ...p, identity: updated, updatedAt: new Date().toISOString() }
@@ -103,7 +112,6 @@ export function usePatientState() {
     ));
   }, [currentPatientId]);
 
-  // Update current patient clinical data
   const updateClinical = useCallback(async (updates: Partial<ClinicalData>) => {
     if (!currentPatientId) return;
     
@@ -119,7 +127,6 @@ export function usePatientState() {
     }));
   }, [currentPatientId]);
 
-  // Generate SBAR using AI
   const generateSBAR = useCallback(async () => {
     if (!currentPatient || !currentPatient.clinical.rawDictation.trim()) {
       toast({
@@ -161,13 +168,12 @@ export function usePatientState() {
     }
   }, [currentPatient, updateClinical]);
 
-  // Wipe current patient identity
   const wipeCurrentIdentity = useCallback(() => {
     if (!currentPatientId) return;
-    identitiesRef.current.set(currentPatientId, emptyPatientIdentity);
+    identitiesRef.current.set(currentPatientId, { ...emptyPatientIdentity });
     setPatients(prev => prev.map(p => 
       p.id === currentPatientId 
-        ? { ...p, identity: emptyPatientIdentity }
+        ? { ...p, identity: { ...emptyPatientIdentity } }
         : p
     ));
     toast({
@@ -176,7 +182,6 @@ export function usePatientState() {
     });
   }, [currentPatientId]);
 
-  // Wipe all session data
   const wipeAllSession = useCallback(() => {
     identitiesRef.current.clear();
     setPatients([]);
@@ -189,12 +194,10 @@ export function usePatientState() {
     });
   }, []);
 
-  // Get identity for display (from RAM)
   const getIdentity = useCallback((patientId: string): PatientIdentity => {
     return identitiesRef.current.get(patientId) || emptyPatientIdentity;
   }, []);
 
-  // Prepare handover payload
   const prepareHandoverPayload = useCallback((): HandoverPayload | null => {
     if (!currentPatient) return null;
     const identity = identitiesRef.current.get(currentPatient.id) || emptyPatientIdentity;
@@ -206,7 +209,6 @@ export function usePatientState() {
     };
   }, [currentPatient, sessionToken]);
 
-  // Receive handover
   const receiveHandover = useCallback(async (payload: HandoverPayload, receiverId: string) => {
     const newPatient = createPatientRecord(payload.identity, payload.clinical);
     identitiesRef.current.set(newPatient.id, payload.identity);
@@ -229,7 +231,6 @@ export function usePatientState() {
     });
   }, []);
 
-  // Log outgoing handover
   const logHandover = useCallback(async (receiverId: string) => {
     if (!currentPatient) return;
     const identity = identitiesRef.current.get(currentPatient.id) || emptyPatientIdentity;
@@ -244,32 +245,43 @@ export function usePatientState() {
     });
   }, [currentPatient]);
 
-  return {
-    // Patient list
-    patients,
-    currentPatientId,
-    currentPatient,
-    addPatient,
-    removePatient,
-    selectPatient,
-    getIdentity,
-    
-    // Current patient data
-    identity: currentPatient ? (identitiesRef.current.get(currentPatient.id) || emptyPatientIdentity) : emptyPatientIdentity,
-    clinical: currentPatient?.clinical || emptyClinicalData,
-    
-    // Actions
-    updateIdentity,
-    updateClinical,
-    generateSBAR,
-    wipeCurrentIdentity,
-    wipeAllSession,
-    
-    // Handover
-    sessionToken,
-    isGenerating,
-    prepareHandoverPayload,
-    receiveHandover,
-    logHandover,
-  };
+  const identity = currentPatient 
+    ? (identitiesRef.current.get(currentPatient.id) || emptyPatientIdentity) 
+    : emptyPatientIdentity;
+  
+  const clinical = currentPatient?.clinical || emptyClinicalData;
+
+  return (
+    <PatientContext.Provider value={{
+      patients,
+      currentPatientId,
+      currentPatient,
+      addPatient,
+      removePatient,
+      selectPatient,
+      getIdentity,
+      identity,
+      clinical,
+      updateIdentity,
+      updateClinical,
+      generateSBAR,
+      wipeCurrentIdentity,
+      wipeAllSession,
+      sessionToken,
+      isGenerating,
+      prepareHandoverPayload,
+      receiveHandover,
+      logHandover,
+    }}>
+      {children}
+    </PatientContext.Provider>
+  );
+}
+
+export function usePatientContext() {
+  const context = useContext(PatientContext);
+  if (!context) {
+    throw new Error('usePatientContext must be used within PatientProvider');
+  }
+  return context;
 }
