@@ -6,6 +6,7 @@ import {
   PatientIdentity, 
   ClinicalData, 
   PatientRecord,
+  PatientReminder,
   emptyPatientIdentity, 
   emptyClinicalData,
   createPatientRecord,
@@ -36,6 +37,9 @@ interface PatientContextType {
   prepareHandoverPayload: () => HandoverPayload | null;
   receiveHandover: (payload: HandoverPayload, receiverId: string) => Promise<void>;
   logHandover: (receiverId: string) => Promise<void>;
+  addReminder: (patientId: string, time: string, message: string) => void;
+  removeReminder: (patientId: string, reminderId: string) => void;
+  triggerReminder: (patientId: string, reminderId: string) => void;
 }
 
 const PatientContext = createContext<PatientContextType | null>(null);
@@ -58,6 +62,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
           id: c.id,
           identity: emptyPatientIdentity,
           clinical: c.clinical,
+          reminders: c.reminders || [],
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         }));
@@ -71,6 +76,46 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     };
     loadData();
   }, []);
+
+  // Alarm check interval
+  useEffect(() => {
+    const checkAlarms = () => {
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      patients.forEach(patient => {
+        patient.reminders.forEach(reminder => {
+          if (!reminder.triggered && reminder.time === currentTime) {
+            const identity = identitiesRef.current.get(patient.id);
+            const patientName = identity?.name || identity?.bedNumber || 'Paziente';
+            
+            // Play sound
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleAlEnuHdoWMUIkWa47BvHgQeTs/npl8SBhhYqvaYTQgADli29X1DAAALV8D4bC0AAAtez/hgIAAAD2PR+FUWAAATZdj4TRAAABdo2/hIDAAAG2rc+EQIAAAea9z4QgcAAB9s3PhBBgAAIGzc+EEFAAAhbNz4QQUAACFs3PhCBQAAIGzc+EIFAAAhbN34QgUAACBs3fhCBgAAIW3d+EMGAAAhbd74QwYAACFt3vhDBwAAIm7e+EMHAAAibt74RAcAACNu3/hEBwAAI2/f+EUIAAAkcN/4RQgAACVw4PhFCQAAJXHg+EYJAAAmceH4RgkAACdx4fhGCgAAJ3Li+EcKAAAocuL4RwoAAChy4vhHCwAAKXPj+EgLAAApc+P4SAwAACp05PhJDQAAK3Tk+EkNAAArdOX4Sg4AACx15fhKDgAALHXm+EsOAAAtdub4Sw8AAC125/hMDwAALnbn+EwQAAAvd+j4TRAAADBs5fhNEAAC');
+            audio.play().catch(() => {});
+            
+            // Show toast
+            toast({
+              title: `⏰ Promemoria: ${patientName}`,
+              description: reminder.message,
+              duration: 10000,
+            });
+            
+            // Mark as triggered inline
+            setPatients(prev => prev.map(p => 
+              p.id === patient.id 
+                ? { ...p, reminders: p.reminders.map(r => r.id === reminder.id ? { ...r, triggered: true } : r) }
+                : p
+            ));
+          }
+        });
+      });
+    };
+
+    const interval = setInterval(checkAlarms, 30000); // Check every 30 seconds
+    checkAlarms(); // Initial check
+    
+    return () => clearInterval(interval);
+  }, [patients]);
 
   useEffect(() => {
     if (isLoaded && patients.length > 0) {
@@ -251,6 +296,36 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   
   const clinical = currentPatient?.clinical || emptyClinicalData;
 
+  const addReminder = useCallback((patientId: string, time: string, message: string) => {
+    const newReminder: PatientReminder = {
+      id: crypto.randomUUID(),
+      time,
+      message,
+      triggered: false,
+    };
+    setPatients(prev => prev.map(p => 
+      p.id === patientId 
+        ? { ...p, reminders: [...p.reminders, newReminder], updatedAt: new Date().toISOString() }
+        : p
+    ));
+  }, []);
+
+  const removeReminder = useCallback((patientId: string, reminderId: string) => {
+    setPatients(prev => prev.map(p => 
+      p.id === patientId 
+        ? { ...p, reminders: p.reminders.filter(r => r.id !== reminderId), updatedAt: new Date().toISOString() }
+        : p
+    ));
+  }, []);
+
+  const triggerReminder = useCallback((patientId: string, reminderId: string) => {
+    setPatients(prev => prev.map(p => 
+      p.id === patientId 
+        ? { ...p, reminders: p.reminders.map(r => r.id === reminderId ? { ...r, triggered: true } : r) }
+        : p
+    ));
+  }, []);
+
   return (
     <PatientContext.Provider value={{
       patients,
@@ -272,6 +347,9 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       prepareHandoverPayload,
       receiveHandover,
       logHandover,
+      addReminder,
+      removeReminder,
+      triggerReminder,
     }}>
       {children}
     </PatientContext.Provider>
