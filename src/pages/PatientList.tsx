@@ -1,11 +1,11 @@
 // Patient List Page
-// Displays all patients with triage colors, filters, and pending exams
+// Displays all patients with triage colors, filters, pending exams, and bulk handover
 
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, User, Trash2, ChevronRight, Bell, Clock, X, AlertTriangle, Heart, 
-  Search, FlaskConical, Scan, Stethoscope, Bed
+  Search, FlaskConical, Scan, Stethoscope, Bed, Send, Download, CheckSquare, Square
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +14,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { AppHeader } from '@/components/AppHeader';
 import { usePatientContext } from '@/context/PatientContext';
 import { Input } from '@/components/ui/input';
+import { BulkHandoverModal } from '@/components/BulkHandoverModal';
+import { MultiPartPayload } from '@/lib/qr-multipart';
 import { 
   ESITI_LABELS, Esito, ClinicalData, 
   TRIAGE_LEVELS, TRIAGE_LABELS, TRIAGE_COLORS, TriageLevel,
@@ -38,6 +40,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const PENDING_ICONS: Record<PendingType, typeof FlaskConical> = {
   lab: FlaskConical,
@@ -57,12 +60,17 @@ export default function PatientList() {
     wipeAllSession,
     addReminder,
     removeReminder,
+    sessionToken,
+    receiveBulkHandover,
+    logBulkHandover,
   } = usePatientContext();
 
   const [reminderDialog, setReminderDialog] = useState<string | null>(null);
   const [reminderTime, setReminderTime] = useState('');
   const [reminderMessage, setReminderMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPatients, setSelectedPatients] = useState<Set<string>>(new Set());
+  const [handoverMode, setHandoverMode] = useState<'send' | 'receive' | null>(null);
 
   // Filter patients by search query (name or bed number)
   const filteredPatients = useMemo(() => {
@@ -117,6 +125,36 @@ export default function PatientList() {
     }
   };
 
+  const togglePatientSelection = (patientId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedPatients(prev => {
+      const next = new Set(prev);
+      if (next.has(patientId)) {
+        next.delete(patientId);
+      } else {
+        next.add(patientId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedPatients.size === sortedPatients.length) {
+      setSelectedPatients(new Set());
+    } else {
+      setSelectedPatients(new Set(sortedPatients.map(p => p.id)));
+    }
+  };
+
+  const handleReceive = async (payload: MultiPartPayload, receiverId: string) => {
+    await receiveBulkHandover(payload, receiverId);
+  };
+
+  const handleSent = async (receiverId: string, patientIds: string[]) => {
+    await logBulkHandover(receiverId, patientIds);
+    setSelectedPatients(new Set());
+  };
+
   const getPatientDisplayName = (patientId: string): string => {
     const identity = getIdentity(patientId);
     if (identity.name) return identity.name;
@@ -168,23 +206,64 @@ export default function PatientList() {
             <h1 className="text-2xl font-bold">Pazienti</h1>
             <p className="text-sm text-muted-foreground">
               {patients.length} pazient{patients.length === 1 ? 'e' : 'i'} in lista
+              {selectedPatients.size > 0 && (
+                <span className="text-primary ml-2">
+                  ({selectedPatients.size} selezionat{selectedPatients.size === 1 ? 'o' : 'i'})
+                </span>
+              )}
             </p>
           </div>
-          <Button onClick={handleAddPatient} className="gap-2 shadow-lg shadow-primary/25">
-            <Plus className="h-4 w-4" />
-            Nuovo Paziente
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setHandoverMode('receive')}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Ricevi
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setHandoverMode('send')}
+              disabled={selectedPatients.size === 0}
+              className="gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Consegna {selectedPatients.size > 0 && `(${selectedPatients.size})`}
+            </Button>
+            <Button onClick={handleAddPatient} className="gap-2 shadow-lg shadow-primary/25">
+              <Plus className="h-4 w-4" />
+              Nuovo
+            </Button>
+          </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cerca per nome o letto..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-card border-border"
-          />
+        {/* Search Bar with Select All */}
+        <div className="flex gap-2 mb-6">
+          {patients.length > 0 && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleSelectAll}
+              className="shrink-0"
+              title={selectedPatients.size === sortedPatients.length ? 'Deseleziona tutti' : 'Seleziona tutti'}
+            >
+              {selectedPatients.size === sortedPatients.length && sortedPatients.length > 0 ? (
+                <CheckSquare className="h-4 w-4" />
+              ) : (
+                <Square className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cerca per nome o letto..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-card border-border"
+            />
+          </div>
         </div>
 
         {/* Patient Grid */}
@@ -220,19 +299,31 @@ export default function PatientList() {
                 const activeReminders = patient.reminders.filter(r => !r.triggered);
                 const hasPending = patient.clinical.pendingExams?.length > 0;
                 const isCritical = identity.triage === 'rosso' || identity.triage === 'arancione';
+                const isSelected = selectedPatients.has(patient.id);
                 
                 return (
                   <Card
                     key={patient.id}
                     className={cn(
                       "cursor-pointer hover:bg-accent/50 transition-all group relative",
-                      getTriageClasses(identity.triage, isCritical)
+                      getTriageClasses(identity.triage, isCritical),
+                      isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
                     )}
                     onClick={() => handleSelectPatient(patient.id)}
                   >
                     <CardContent className="p-4">
+                      {/* Selection checkbox */}
+                      <div 
+                        className="absolute top-2 left-2 z-10"
+                        onClick={(e) => togglePatientSelection(patient.id, e)}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          className="h-5 w-5 border-2"
+                        />
+                      </div>
                       {/* Header Row */}
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-3 pl-6">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           {/* Bed Number - Large Monospace */}
                           {identity.bedNumber && (
@@ -466,6 +557,19 @@ export default function PatientList() {
           </ScrollArea>
         )}
       </main>
+
+      {/* Bulk Handover Modal */}
+      <BulkHandoverModal
+        open={handoverMode !== null}
+        onClose={() => setHandoverMode(null)}
+        mode={handoverMode}
+        patients={patients}
+        selectedIds={Array.from(selectedPatients)}
+        getIdentity={getIdentity}
+        sessionToken={sessionToken}
+        onReceive={handleReceive}
+        onSent={handleSent}
+      />
     </div>
   );
 }
