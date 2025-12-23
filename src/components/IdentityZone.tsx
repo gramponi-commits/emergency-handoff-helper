@@ -5,7 +5,10 @@ import { AlertTriangle, User, Heart, AlertCircle, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { PatientIdentity, COMORBIDITIES, ESITI, ESITI_LABELS, Comorbidity, Esito } from '@/types/patient';
+import { 
+  PatientIdentity, COMORBIDITIES, ESITI, ESITI_LABELS, Comorbidity, Esito,
+  TRIAGE_LEVELS, TRIAGE_LABELS, TRIAGE_COLORS, TriageLevel
+} from '@/types/patient';
 import { cn } from '@/lib/utils';
 
 interface IdentityZoneProps {
@@ -26,6 +29,10 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
     onUpdate({ esito: identity.esito === esito ? null : esito });
   };
 
+  const setTriage = (triage: TriageLevel) => {
+    onUpdate({ triage });
+  };
+
   return (
     <div className="zone-identity rounded-lg p-4 space-y-4">
       {/* Security Warning Header */}
@@ -37,6 +44,34 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
         <span className="text-xs text-muted-foreground ml-auto">
           Cancellato alla chiusura
         </span>
+      </div>
+
+      {/* Triage Selection - Prominent */}
+      <div className="space-y-2">
+        <Label className="text-muted-foreground font-medium">
+          Codice Triage
+        </Label>
+        <div className="flex flex-wrap gap-2">
+          {TRIAGE_LEVELS.map((triage) => {
+            const colors = TRIAGE_COLORS[triage];
+            const isSelected = identity.triage === triage;
+            return (
+              <Badge
+                key={triage}
+                className={cn(
+                  "cursor-pointer transition-all hover:scale-105 select-none px-4 py-2 text-sm font-mono uppercase",
+                  isSelected
+                    ? cn(colors.bg, colors.text, colors.border, 'border-2 ring-2 ring-offset-2 ring-offset-background', colors.glow)
+                    : "bg-muted/50 hover:bg-muted text-muted-foreground border border-border"
+                )}
+                onClick={() => setTriage(triage)}
+                title={TRIAGE_LABELS[triage]}
+              >
+                {triage}
+              </Badge>
+            );
+          })}
+        </div>
       </div>
 
       {/* Identity Fields */}
@@ -65,7 +100,7 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
             value={identity.age || ''}
             onChange={(e) => onUpdate({ age: e.target.value ? parseInt(e.target.value) : null })}
             placeholder="Età"
-            className="bg-background/50 border-destructive/30 focus:border-destructive"
+            className="bg-background/50 border-destructive/30 focus:border-destructive font-mono"
           />
         </div>
 
@@ -78,7 +113,7 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
             value={identity.bedNumber}
             onChange={(e) => onUpdate({ bedNumber: e.target.value })}
             placeholder="es. A-12"
-            className="bg-background/50 border-destructive/30 focus:border-destructive"
+            className="bg-background/50 border-destructive/30 focus:border-destructive font-mono text-lg font-bold"
           />
         </div>
       </div>
@@ -115,8 +150,8 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
           className={cn(
             "cursor-pointer transition-all hover:scale-105 select-none px-3 py-1",
             identity.allergico
-              ? "bg-orange-500 text-white border-orange-500"
-              : "bg-background/50 hover:bg-orange-500/20 border-orange-500/50"
+              ? "bg-triage-arancione text-primary-foreground border-triage-arancione"
+              : "bg-background/50 hover:bg-triage-arancione/20 border-triage-arancione/50 text-triage-arancione"
           )}
           onClick={() => onUpdate({ allergico: !identity.allergico })}
         >
@@ -129,8 +164,8 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
           className={cn(
             "cursor-pointer transition-all hover:scale-105 select-none px-3 py-1",
             identity.sociale
-              ? "bg-purple-500 text-white border-purple-500"
-              : "bg-background/50 hover:bg-purple-500/20 border-purple-500/50"
+              ? "bg-purple-500 text-primary-foreground border-purple-500"
+              : "bg-background/50 hover:bg-purple-500/20 border-purple-500/50 text-purple-400"
           )}
           onClick={() => onUpdate({ sociale: !identity.sociale })}
         >
@@ -145,24 +180,30 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
           Esito Probabile
         </Label>
         <div className="flex flex-wrap gap-2">
-          {ESITI.map((esito) => (
-            <Badge
-              key={esito}
-              variant="outline"
-              className={cn(
-                "cursor-pointer transition-all hover:scale-105 select-none",
-                identity.esito === esito
-                  ? esito === 'D' ? "bg-green-500 text-white border-green-500"
-                  : esito === 'R' ? "bg-red-500 text-white border-red-500"
-                  : "bg-yellow-500 text-white border-yellow-500"
-                  : "bg-background/50 hover:bg-muted"
-              )}
-              onClick={() => setEsito(esito)}
-              title={ESITI_LABELS[esito]}
-            >
-              {esito}
-            </Badge>
-          ))}
+          {ESITI.map((esito) => {
+            const isSelected = identity.esito === esito;
+            const colors = {
+              'D': { active: 'bg-triage-verde text-primary-foreground border-triage-verde', inactive: 'hover:bg-triage-verde/20 text-triage-verde border-triage-verde/50' },
+              'OB': { active: 'bg-triage-arancione text-primary-foreground border-triage-arancione', inactive: 'hover:bg-triage-arancione/20 text-triage-arancione border-triage-arancione/50' },
+              'OB/D': { active: 'bg-triage-verde text-primary-foreground border-triage-verde', inactive: 'hover:bg-triage-verde/20 text-triage-verde border-triage-verde/50' },
+              'OB/R': { active: 'bg-triage-rosso text-primary-foreground border-triage-rosso', inactive: 'hover:bg-triage-rosso/20 text-triage-rosso border-triage-rosso/50' },
+              'R': { active: 'bg-triage-rosso text-primary-foreground border-triage-rosso', inactive: 'hover:bg-triage-rosso/20 text-triage-rosso border-triage-rosso/50' },
+            };
+            return (
+              <Badge
+                key={esito}
+                variant="outline"
+                className={cn(
+                  "cursor-pointer transition-all hover:scale-105 select-none",
+                  isSelected ? colors[esito].active : cn('bg-background/50', colors[esito].inactive)
+                )}
+                onClick={() => setEsito(esito)}
+                title={ESITI_LABELS[esito]}
+              >
+                {esito}
+              </Badge>
+            );
+          })}
         </div>
       </div>
     </div>
