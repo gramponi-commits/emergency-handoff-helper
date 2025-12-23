@@ -6,36 +6,37 @@
 
 @layer base {
   :root {
-    --background: 220 20% 10%;
+    --background: 220 20% 6%;
     --foreground: 210 20% 95%;
     
-    --card: 220 18% 13%;
+    --card: 220 18% 10%;
     --card-foreground: 210 20% 95%;
     
-    --popover: 220 18% 13%;
+    --popover: 220 18% 10%;
     --popover-foreground: 210 20% 95%;
     
     --primary: 142 70% 45%;
-    --primary-foreground: 220 20% 10%;
+    --primary-foreground: 220 20% 6%;
     
-    --secondary: 220 15% 20%;
+    --secondary: 220 15% 15%;
     --secondary-foreground: 210 20% 90%;
     
-    --muted: 220 15% 18%;
+    --muted: 220 15% 14%;
     --muted-foreground: 215 15% 55%;
     
-    --accent: 220 15% 22%;
+    --accent: 220 15% 18%;
     --accent-foreground: 210 20% 95%;
     
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 20% 98%;
     
-    --border: 220 15% 22%;
-    --input: 220 15% 18%;
+    --border: 220 15% 18%;
+    --input: 220 15% 14%;
     --ring: 142 70% 45%;
     
     --radius: 0.625rem;
     
+    /* Zone colors */
     --zone-identity: 0 72% 51%;
     --zone-clinical: 142 70% 45%;
     --zone-situation: 25 95% 53%;
@@ -43,35 +44,48 @@
     --zone-assessment: 142 70% 45%;
     --zone-recommendation: 280 65% 60%;
     
-    --sidebar-background: 220 18% 11%;
+    /* Triage colors - Italian ER system */
+    --triage-rosso: 0 84% 50%;
+    --triage-arancione: 25 95% 53%;
+    --triage-azzurro: 199 89% 48%;
+    --triage-verde: 142 70% 45%;
+    --triage-bianco: 220 13% 70%;
+    
+    /* Pending exam colors */
+    --pending-lab: 280 65% 60%;
+    --pending-imaging: 199 89% 48%;
+    --pending-consulenza: 25 95% 53%;
+    --pending-posto: 142 70% 45%;
+    
+    --sidebar-background: 220 18% 8%;
     --sidebar-foreground: 210 20% 95%;
     --sidebar-primary: 142 70% 45%;
-    --sidebar-primary-foreground: 220 20% 10%;
-    --sidebar-accent: 220 15% 18%;
+    --sidebar-primary-foreground: 220 20% 6%;
+    --sidebar-accent: 220 15% 14%;
     --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 220 15% 22%;
+    --sidebar-border: 220 15% 18%;
     --sidebar-ring: 142 70% 45%;
   }
 
   .dark {
-    --background: 220 20% 10%;
+    --background: 220 20% 6%;
     --foreground: 210 20% 95%;
-    --card: 220 18% 13%;
+    --card: 220 18% 10%;
     --card-foreground: 210 20% 95%;
-    --popover: 220 18% 13%;
+    --popover: 220 18% 10%;
     --popover-foreground: 210 20% 95%;
     --primary: 142 70% 45%;
-    --primary-foreground: 220 20% 10%;
-    --secondary: 220 15% 20%;
+    --primary-foreground: 220 20% 6%;
+    --secondary: 220 15% 15%;
     --secondary-foreground: 210 20% 90%;
-    --muted: 220 15% 18%;
+    --muted: 220 15% 14%;
     --muted-foreground: 215 15% 55%;
-    --accent: 220 15% 22%;
+    --accent: 220 15% 18%;
     --accent-foreground: 210 20% 95%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 20% 98%;
-    --border: 220 15% 22%;
-    --input: 220 15% 18%;
+    --border: 220 15% 18%;
+    --input: 220 15% 14%;
     --ring: 142 70% 45%;
   }
 }
@@ -127,6 +141,52 @@
   @keyframes pulse-warning {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
+  }
+  
+  /* Triage card glow effects */
+  .triage-glow-rosso {
+    box-shadow: 0 0 20px hsl(var(--triage-rosso) / 0.4), 
+                inset 0 1px 0 hsl(var(--triage-rosso) / 0.2);
+  }
+  
+  .triage-glow-arancione {
+    box-shadow: 0 0 15px hsl(var(--triage-arancione) / 0.3), 
+                inset 0 1px 0 hsl(var(--triage-arancione) / 0.2);
+  }
+  
+  .triage-glow-azzurro {
+    box-shadow: 0 0 12px hsl(var(--triage-azzurro) / 0.25), 
+                inset 0 1px 0 hsl(var(--triage-azzurro) / 0.15);
+  }
+  
+  /* Pending exams animation */
+  .pending-pulse {
+    animation: pending-pulse 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes pending-pulse {
+    0%, 100% { 
+      opacity: 1; 
+      transform: scale(1);
+    }
+    50% { 
+      opacity: 0.7; 
+      transform: scale(1.05);
+    }
+  }
+  
+  /* Critical patient border animation */
+  .critical-border {
+    animation: critical-border 2s ease-in-out infinite;
+  }
+  
+  @keyframes critical-border {
+    0%, 100% { 
+      border-color: hsl(var(--triage-rosso));
+    }
+    50% { 
+      border-color: hsl(var(--triage-rosso) / 0.5);
+    }
   }
 }
 

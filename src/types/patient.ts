@@ -2,6 +2,28 @@
 // Security: These types enforce the split-stream data architecture
 
 /**
+ * Italian Triage levels (Pronto Soccorso)
+ */
+export const TRIAGE_LEVELS = ['rosso', 'arancione', 'azzurro', 'verde', 'bianco'] as const;
+export type TriageLevel = typeof TRIAGE_LEVELS[number];
+
+export const TRIAGE_LABELS: Record<TriageLevel, string> = {
+  'rosso': 'Rosso - Emergenza',
+  'arancione': 'Arancione - Urgenza',
+  'azzurro': 'Azzurro - Urgenza Differibile',
+  'verde': 'Verde - Urgenza Minore',
+  'bianco': 'Bianco - Non Urgente',
+};
+
+export const TRIAGE_COLORS: Record<TriageLevel, { bg: string; text: string; border: string; glow: string }> = {
+  'rosso': { bg: 'bg-triage-rosso/20', text: 'text-triage-rosso', border: 'border-triage-rosso', glow: 'shadow-triage-rosso/50' },
+  'arancione': { bg: 'bg-triage-arancione/20', text: 'text-triage-arancione', border: 'border-triage-arancione', glow: 'shadow-triage-arancione/50' },
+  'azzurro': { bg: 'bg-triage-azzurro/20', text: 'text-triage-azzurro', border: 'border-triage-azzurro', glow: 'shadow-triage-azzurro/50' },
+  'verde': { bg: 'bg-triage-verde/20', text: 'text-triage-verde', border: 'border-triage-verde', glow: 'shadow-triage-verde/50' },
+  'bianco': { bg: 'bg-triage-bianco/20', text: 'text-triage-bianco', border: 'border-triage-bianco', glow: 'shadow-triage-bianco/50' },
+};
+
+/**
  * Common comorbidities flags
  */
 export const COMORBIDITIES = ['BPCO', 'IRC', 'DM2', 'IPA', 'CIC', 'FA'] as const;
@@ -22,6 +44,19 @@ export const ESITI_LABELS: Record<Esito, string> = {
 };
 
 /**
+ * Pending exams/requests
+ */
+export const PENDING_TYPES = ['lab', 'imaging', 'consulenza', 'postoLetto'] as const;
+export type PendingType = typeof PENDING_TYPES[number];
+
+export const PENDING_LABELS: Record<PendingType, string> = {
+  'lab': 'Lab',
+  'imaging': 'Imaging',
+  'consulenza': 'Consulenza',
+  'postoLetto': 'Posto Letto',
+};
+
+/**
  * Vault A - Patient Identity (RAM ONLY)
  * NEVER persisted to storage. Wiped on app close/refresh.
  * Only transferred via encrypted QR code.
@@ -31,6 +66,7 @@ export interface PatientIdentity {
   age: number | null;
   bedNumber: string;
   admissionDate: string;
+  triage: TriageLevel;
   comorbidities: Comorbidity[];
   allergico: boolean;
   sociale: boolean;
@@ -47,6 +83,7 @@ export interface ClinicalData {
   background: string;     // Anamnesi
   assessment: string;     // Valutazione
   recommendation: string; // Raccomandazione
+  pendingExams: PendingType[];
   timestamp: string;
 }
 
@@ -101,6 +138,7 @@ export const emptyPatientIdentity: PatientIdentity = {
   age: null,
   bedNumber: '',
   admissionDate: new Date().toISOString().split('T')[0],
+  triage: 'verde',
   comorbidities: [],
   allergico: false,
   sociale: false,
@@ -115,6 +153,7 @@ export const emptyClinicalData: ClinicalData = {
   background: '',
   assessment: '',
   recommendation: '',
+  pendingExams: [],
   timestamp: new Date().toISOString(),
 };
 

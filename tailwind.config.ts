@@ -70,6 +70,19 @@ export default {
           assessment: "hsl(var(--zone-assessment))",
           recommendation: "hsl(var(--zone-recommendation))",
         },
+        triage: {
+          rosso: "hsl(var(--triage-rosso))",
+          arancione: "hsl(var(--triage-arancione))",
+          azzurro: "hsl(var(--triage-azzurro))",
+          verde: "hsl(var(--triage-verde))",
+          bianco: "hsl(var(--triage-bianco))",
+        },
+        pending: {
+          lab: "hsl(var(--pending-lab))",
+          imaging: "hsl(var(--pending-imaging))",
+          consulenza: "hsl(var(--pending-consulenza))",
+          posto: "hsl(var(--pending-posto))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
