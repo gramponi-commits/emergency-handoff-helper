@@ -12,6 +12,7 @@ import {
   createPatientRecord,
   HandoverPayload 
 } from '@/types/patient';
+import { MultiPartPayload } from '@/lib/qr-multipart';
 import { savePatientList, loadPatientListClinical, appendAuditLog, clearAllStorage } from '@/lib/storage';
 import { generateHash, generateSessionToken } from '@/lib/crypto';
 import { toast } from '@/hooks/use-toast';
@@ -33,7 +34,9 @@ interface PatientContextType {
   sessionToken: string;
   prepareHandoverPayload: () => HandoverPayload | null;
   receiveHandover: (payload: HandoverPayload, receiverId: string) => Promise<void>;
+  receiveBulkHandover: (payload: MultiPartPayload, receiverId: string) => Promise<void>;
   logHandover: (receiverId: string) => Promise<void>;
+  logBulkHandover: (receiverId: string, patientIds: string[]) => Promise<void>;
   addReminder: (patientId: string, time: string, message: string) => void;
   removeReminder: (patientId: string, reminderId: string) => void;
   triggerReminder: (patientId: string, reminderId: string) => void;
@@ -231,6 +234,33 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const receiveBulkHandover = useCallback(async (payload: MultiPartPayload, receiverId: string) => {
+    const newPatients: PatientRecord[] = [];
+    
+    for (const p of payload.patients) {
+      const newPatient = createPatientRecord(p.identity, p.clinical);
+      identitiesRef.current.set(newPatient.id, p.identity);
+      newPatients.push(newPatient);
+
+      const hashInput = `${p.identity.name}|${p.clinical.situation}|${payload.timestamp}`;
+      const hash = await generateHash(hashInput);
+      
+      appendAuditLog({
+        hash,
+        timestamp: new Date().toISOString(),
+        receiverId,
+        direction: 'received',
+      });
+    }
+
+    setPatients(prev => [...prev, ...newPatients]);
+    
+    toast({
+      title: 'Consegna ricevuta',
+      description: `${payload.patients.length} pazient${payload.patients.length === 1 ? 'e' : 'i'} caricato. Token: ${payload.sessionToken}`,
+    });
+  }, []);
+
   const logHandover = useCallback(async (receiverId: string) => {
     if (!currentPatient) return;
     const identity = identitiesRef.current.get(currentPatient.id) || emptyPatientIdentity;
@@ -244,6 +274,24 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       direction: 'sent',
     });
   }, [currentPatient]);
+
+  const logBulkHandover = useCallback(async (receiverId: string, patientIds: string[]) => {
+    for (const patientId of patientIds) {
+      const patient = patients.find(p => p.id === patientId);
+      if (!patient) continue;
+      
+      const identity = identitiesRef.current.get(patientId) || emptyPatientIdentity;
+      const hashInput = `${identity.name}|${patient.clinical.situation}|${new Date().toISOString()}`;
+      const hash = await generateHash(hashInput);
+      
+      appendAuditLog({
+        hash,
+        timestamp: new Date().toISOString(),
+        receiverId,
+        direction: 'sent',
+      });
+    }
+  }, [patients]);
 
   const identity = currentPatient 
     ? (identitiesRef.current.get(currentPatient.id) || emptyPatientIdentity) 
@@ -299,7 +347,9 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       sessionToken,
       prepareHandoverPayload,
       receiveHandover,
+      receiveBulkHandover,
       logHandover,
+      logBulkHandover,
       addReminder,
       removeReminder,
       triggerReminder,
