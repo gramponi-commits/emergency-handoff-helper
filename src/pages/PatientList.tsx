@@ -339,11 +339,14 @@ export default function PatientList() {
                             <h3 className="font-medium truncate">
                               {identity.name || 'Senza nome'}
                             </h3>
-                            {identity.age && (
-                              <p className="text-xs text-muted-foreground">
-                                {identity.age} anni
-                              </p>
-                            )}
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {identity.age && <span>{identity.age} anni</span>}
+                              {identity.area && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {identity.area}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                         
