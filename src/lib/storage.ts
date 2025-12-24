@@ -1,12 +1,14 @@
 // Storage Service for AcuteHandoff
 // Handles encrypted persistence of Vault B (Clinical Data) and Patient List
 
-import { ClinicalData, HandoverLogEntry, PatientRecord, PatientReminder } from '@/types/patient';
+import { ClinicalData, HandoverLogEntry, PatientRecord, PatientReminder, PatientIdentity, ArchivedPatient } from '@/types/patient';
 import { encryptData, decryptData } from './crypto';
 
 const CLINICAL_DATA_KEY = 'acutehandoff-clinical';
 const AUDIT_LOG_KEY = 'acutehandoff-audit';
 const PATIENT_LIST_KEY = 'acutehandoff-patients';
+const IDENTITIES_KEY = 'acutehandoff-identities';
+const ARCHIVE_KEY = 'acutehandoff-archive';
 
 /**
  * Save clinical data to encrypted localStorage
@@ -118,5 +120,73 @@ export function getAuditLog(): HandoverLogEntry[] {
 export function clearAllStorage(): void {
   localStorage.removeItem(CLINICAL_DATA_KEY);
   localStorage.removeItem(PATIENT_LIST_KEY);
+  localStorage.removeItem(IDENTITIES_KEY);
   sessionStorage.removeItem('acutehandoff-key');
+}
+
+/**
+ * Save patient identities to encrypted localStorage
+ */
+export async function savePatientIdentities(identities: Map<string, PatientIdentity>): Promise<void> {
+  try {
+    const obj = Object.fromEntries(identities);
+    const encrypted = await encryptData(JSON.stringify(obj));
+    localStorage.setItem(IDENTITIES_KEY, encrypted);
+  } catch (error) {
+    console.error('Failed to save patient identities:', error);
+  }
+}
+
+/**
+ * Load patient identities from encrypted localStorage
+ */
+export async function loadPatientIdentities(): Promise<Map<string, PatientIdentity>> {
+  try {
+    const encrypted = localStorage.getItem(IDENTITIES_KEY);
+    if (!encrypted) return new Map();
+    
+    const decrypted = await decryptData(encrypted);
+    const obj = JSON.parse(decrypted);
+    return new Map(Object.entries(obj));
+  } catch (error) {
+    console.error('Failed to load patient identities:', error);
+    return new Map();
+  }
+}
+
+/**
+ * Save archived patients to encrypted localStorage
+ */
+export async function saveArchivedPatients(patients: ArchivedPatient[]): Promise<void> {
+  try {
+    const encrypted = await encryptData(JSON.stringify(patients));
+    localStorage.setItem(ARCHIVE_KEY, encrypted);
+  } catch (error) {
+    console.error('Failed to save archived patients:', error);
+  }
+}
+
+/**
+ * Load archived patients from encrypted localStorage
+ */
+export async function loadArchivedPatients(): Promise<ArchivedPatient[]> {
+  try {
+    const encrypted = localStorage.getItem(ARCHIVE_KEY);
+    if (!encrypted) return [];
+    
+    const decrypted = await decryptData(encrypted);
+    return JSON.parse(decrypted);
+  } catch (error) {
+    console.error('Failed to load archived patients:', error);
+    return [];
+  }
+}
+
+/**
+ * Delete an archived patient permanently
+ */
+export async function deleteArchivedPatient(patientId: string): Promise<void> {
+  const archived = await loadArchivedPatients();
+  const updated = archived.filter(p => p.id !== patientId);
+  await saveArchivedPatients(updated);
 }

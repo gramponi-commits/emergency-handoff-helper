@@ -1,7 +1,7 @@
 // App Header Component
 // Security-focused header with session controls
 
-import { Shield, Trash2, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Shield, Trash2, AlertTriangle, Archive } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { usePatientContext } from '@/context/PatientContext';
 
 interface AppHeaderProps {
   onWipeSession: () => void;
@@ -24,6 +25,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ onWipeSession, onWipeIdentity, showBackButton }: AppHeaderProps) {
   const navigate = useNavigate();
+  const { archivedPatients } = usePatientContext();
 
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -44,6 +46,21 @@ export function AppHeader({ onWipeSession, onWipeIdentity, showBackButton }: App
 
         {/* Session Controls */}
         <div className="flex items-center gap-2">
+          {/* Archive Link */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/archive')}
+            className="text-muted-foreground hover:text-foreground relative"
+          >
+            <Archive className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Archivio</span>
+            {archivedPatients.length > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 text-xs bg-muted rounded-full flex items-center justify-center">
+                {archivedPatients.length}
+              </span>
+            )}
+          </Button>
           {onWipeIdentity && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

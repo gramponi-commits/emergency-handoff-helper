@@ -3,13 +3,15 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, Download, ArrowLeft, Users } from 'lucide-react';
+import { Send, Download, ArrowLeft, Users, Save, CheckCircle } from 'lucide-react';
 import { usePatientContext } from '@/context/PatientContext';
 import { AppHeader } from '@/components/AppHeader';
 import { IdentityZone } from '@/components/IdentityZone';
 import { ClinicalZone } from '@/components/ClinicalZone';
+import { ReminderSection } from '@/components/ReminderSection';
 import { HandoverModal } from '@/components/HandoverModal';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
 export default function PatientDetail() {
   const navigate = useNavigate();
@@ -25,6 +27,8 @@ export default function PatientDetail() {
     prepareHandoverPayload,
     receiveHandover,
     logHandover,
+    addReminder,
+    removeReminder,
   } = usePatientContext();
 
   const [handoverMode, setHandoverMode] = useState<'send' | 'receive' | null>(null);
@@ -47,6 +51,15 @@ export default function PatientDetail() {
     );
   }
 
+  const handleSaveAndClose = () => {
+    toast({
+      title: 'Salvato',
+      description: 'La scheda paziente è stata salvata.',
+      duration: 2000,
+    });
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <AppHeader 
@@ -67,7 +80,7 @@ export default function PatientDetail() {
         </Button>
       </div>
 
-      <main className="flex-1 container mx-auto px-4 py-4 space-y-6 max-w-4xl">
+      <main className="flex-1 container mx-auto px-4 py-4 space-y-6 max-w-4xl pb-32">
         {/* Identity Zone - RAM Only */}
         <IdentityZone identity={identity} onUpdate={updateIdentity} />
 
@@ -76,6 +89,26 @@ export default function PatientDetail() {
           clinical={clinical}
           onUpdate={updateClinical}
         />
+
+        {/* Reminder Section */}
+        <ReminderSection
+          patientId={currentPatient.id}
+          reminders={currentPatient.reminders}
+          onAddReminder={addReminder}
+          onRemoveReminder={removeReminder}
+        />
+
+        {/* Save and Close Button */}
+        <div className="pt-4 pb-8">
+          <Button
+            onClick={handleSaveAndClose}
+            size="lg"
+            className="w-full gap-2 shadow-lg"
+          >
+            <CheckCircle className="h-5 w-5" />
+            Salva e Chiudi
+          </Button>
+        </div>
       </main>
 
       {/* Floating Handover Buttons */}

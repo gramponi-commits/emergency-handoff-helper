@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { PatientProvider } from "@/context/PatientContext";
 import PatientList from "./pages/PatientList";
 import PatientDetail from "./pages/PatientDetail";
+import PatientArchive from "./pages/PatientArchive";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<PatientList />} />
             <Route path="/patient" element={<PatientDetail />} />
+            <Route path="/archive" element={<PatientArchive />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
