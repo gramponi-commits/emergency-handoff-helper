@@ -2,7 +2,7 @@
 // Security: Validates incoming JSON data before processing
 
 import { z } from 'zod';
-import { TRIAGE_LEVELS, COMORBIDITIES, ESITI, PENDING_TYPES } from './patient';
+import { TRIAGE_LEVELS, COMORBIDITIES, ESITI, PENDING_TYPES, PATIENT_AREAS } from './patient';
 
 /**
  * Patient Identity Schema
@@ -14,6 +14,7 @@ export const PatientIdentitySchema = z.object({
   bedNumber: z.string().max(50),
   admissionDate: z.string().max(50),
   triage: z.enum(TRIAGE_LEVELS),
+  area: z.union([z.enum(PATIENT_AREAS), z.string().max(100), z.null()]).optional(),
   comorbidities: z.array(z.enum(COMORBIDITIES)),
   allergico: z.boolean(),
   sociale: z.boolean(),
@@ -31,6 +32,50 @@ export const ClinicalDataSchema = z.object({
   recommendation: z.string().max(10000),
   pendingExams: z.array(z.enum(PENDING_TYPES)),
   timestamp: z.string().max(100),
+});
+
+/**
+ * Patient Reminder Schema
+ */
+export const PatientReminderSchema = z.object({
+  id: z.string().max(100),
+  time: z.string().max(20),
+  message: z.string().max(500),
+  triggered: z.boolean(),
+});
+
+/**
+ * Patient List Clinical Entry Schema
+ */
+export const PatientListClinicalSchema = z.object({
+  id: z.string().max(100),
+  clinical: ClinicalDataSchema,
+  reminders: z.array(PatientReminderSchema).optional(),
+  createdAt: z.string().max(100),
+  updatedAt: z.string().max(100),
+});
+
+/**
+ * Archived Patient Schema
+ */
+export const ArchivedPatientSchema = z.object({
+  id: z.string().max(100),
+  identity: PatientIdentitySchema,
+  clinical: ClinicalDataSchema,
+  reminders: z.array(PatientReminderSchema),
+  createdAt: z.string().max(100),
+  updatedAt: z.string().max(100),
+  archivedAt: z.string().max(100),
+});
+
+/**
+ * Handover Audit Log Entry Schema
+ */
+export const HandoverLogEntrySchema = z.object({
+  hash: z.string().max(200),
+  timestamp: z.string().max(100),
+  receiverId: z.string().max(200),
+  direction: z.enum(['sent', 'received']),
 });
 
 /**
