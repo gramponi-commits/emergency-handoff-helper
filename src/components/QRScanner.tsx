@@ -7,6 +7,8 @@ import { Camera, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { parseQRChunk, QRChunk, decodeMultiPartPayload, MultiPartPayload } from '@/lib/qr-multipart';
+import { HandoverPayloadSchema } from '@/types/patient-schemas';
+import { PatientIdentity, ClinicalData } from '@/types/patient';
 import { cn } from '@/lib/utils';
 
 interface QRScannerProps {
@@ -45,18 +47,20 @@ export function QRScanner({ onComplete, onError }: QRScannerProps) {
     const chunk = parseQRChunk(decodedText);
     
     if (!chunk) {
-      // Try legacy single-patient JSON format
+      // Try legacy single-patient JSON format with validation
       try {
-        const legacy = JSON.parse(decodedText);
-        if (legacy.identity && legacy.clinical) {
-          onComplete({
-            patients: [{ identity: legacy.identity, clinical: legacy.clinical }],
-            sessionToken: legacy.sessionToken || '',
-            timestamp: legacy.timestamp || new Date().toISOString(),
-          });
-          stopScanning();
-          return;
-        }
+        const rawData = JSON.parse(decodedText);
+        const validated = HandoverPayloadSchema.parse(rawData);
+        onComplete({
+          patients: [{ 
+            identity: validated.identity as PatientIdentity, 
+            clinical: validated.clinical as ClinicalData 
+          }],
+          sessionToken: validated.sessionToken || '',
+          timestamp: validated.timestamp || new Date().toISOString(),
+        });
+        stopScanning();
+        return;
       } catch {
         setError('QR non valido');
         return;

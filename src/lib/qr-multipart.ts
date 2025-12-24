@@ -3,6 +3,7 @@
 
 import { compressToBase64, decompressFromBase64 } from 'lz-string';
 import { HandoverPayload, PatientIdentity, ClinicalData } from '@/types/patient';
+import { MultiPartPayloadSchema } from '@/types/patient-schemas';
 
 // Max chars per QR chunk (safe limit for reliable scanning)
 const MAX_CHUNK_SIZE = 900;
@@ -104,7 +105,10 @@ export function decodeMultiPartPayload(chunks: QRChunk[]): MultiPartPayload | nu
   try {
     const json = decompressFromBase64(compressed);
     if (!json) return null;
-    return JSON.parse(json) as MultiPartPayload;
+    const rawData = JSON.parse(json);
+    // Validate with Zod schema
+    const validated = MultiPartPayloadSchema.parse(rawData);
+    return validated as MultiPartPayload;
   } catch {
     return null;
   }

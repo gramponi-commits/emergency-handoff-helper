@@ -24,9 +24,12 @@ import { QRScanner } from '@/components/QRScanner';
 import { 
   encodeMultiPartPayload, 
   MultiPartPayload,
+  parseQRChunk,
+  decodeMultiPartPayload,
   estimateChunkCount 
 } from '@/lib/qr-multipart';
-import { PatientRecord, PatientIdentity, TRIAGE_COLORS } from '@/types/patient';
+import { PatientRecord, PatientIdentity, ClinicalData, TRIAGE_COLORS } from '@/types/patient';
+import { HandoverPayloadSchema, QRChunkArraySchema } from '@/types/patient-schemas';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -132,11 +135,14 @@ export function BulkHandoverModal({
     }
 
     try {
-      // Try parsing as chunk array
-      const chunks = JSON.parse(pastedData);
-      if (Array.isArray(chunks)) {
-        const { parseQRChunk, decodeMultiPartPayload } = require('@/lib/qr-multipart');
-        const parsedChunks = chunks.map((c: string) => parseQRChunk(c)).filter(Boolean);
+      const rawData = JSON.parse(pastedData);
+      
+      // Try parsing as chunk array first
+      const chunkArrayResult = QRChunkArraySchema.safeParse(rawData);
+      if (chunkArrayResult.success) {
+        const parsedChunks = chunkArrayResult.data
+          .map((c: string) => parseQRChunk(c))
+          .filter(Boolean);
         const payload = decodeMultiPartPayload(parsedChunks);
         if (payload) {
           onReceive(payload, receiverId);
@@ -145,13 +151,16 @@ export function BulkHandoverModal({
         }
       }
       
-      // Try legacy single patient format
-      const legacy = JSON.parse(pastedData);
-      if (legacy.identity && legacy.clinical) {
+      // Try legacy single patient format with validation
+      const legacyResult = HandoverPayloadSchema.safeParse(rawData);
+      if (legacyResult.success) {
         onReceive({
-          patients: [{ identity: legacy.identity, clinical: legacy.clinical }],
-          sessionToken: legacy.sessionToken || '',
-          timestamp: legacy.timestamp || new Date().toISOString(),
+          patients: [{ 
+            identity: legacyResult.data.identity as PatientIdentity, 
+            clinical: legacyResult.data.clinical as ClinicalData 
+          }],
+          sessionToken: legacyResult.data.sessionToken || '',
+          timestamp: legacyResult.data.timestamp || new Date().toISOString(),
         }, receiverId);
         onClose();
         return;

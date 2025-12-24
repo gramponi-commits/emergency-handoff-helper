@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HandoverPayload } from '@/types/patient';
+import { HandoverPayloadSchema } from '@/types/patient-schemas';
 import { toast } from '@/hooks/use-toast';
 
 interface HandoverModalProps {
@@ -69,11 +70,16 @@ export function HandoverModal({
     }
 
     try {
-      const data = JSON.parse(pastedData) as HandoverPayload;
-      onReceive(data, receiverId);
+      const rawData = JSON.parse(pastedData);
+      const validated = HandoverPayloadSchema.parse(rawData);
+      onReceive(validated as HandoverPayload, receiverId);
       onClose();
-    } catch {
-      toast({ title: 'Dati non validi', description: 'Impossibile elaborare i dati della consegna', variant: 'destructive' });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ZodError') {
+        toast({ title: 'Dati non validi', description: 'Formato dati consegna non corretto', variant: 'destructive' });
+      } else {
+        toast({ title: 'Errore parsing', description: 'Impossibile leggere i dati', variant: 'destructive' });
+      }
     }
   };
 
