@@ -1,9 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Allowed origins for CORS - prevents unauthorized API usage
+const ALLOWED_ORIGINS = [
+  'https://lwukavdqhibrsjorvknf.lovableproject.com',
+  'https://id.lovable.app', // Lovable preview
+  'http://localhost:8080',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.some(allowed => 
+    origin === allowed || origin.endsWith('.lovableproject.com') || origin.endsWith('.lovable.app')
+  ) ? origin : ALLOWED_ORIGINS[0];
+  
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
 
 const systemPrompt = `Sei un assistente medico specializzato in Pronto Soccorso italiano. Il tuo UNICO compito è formattare le note cliniche nel formato SBAR in ITALIANO.
 
@@ -70,6 +86,9 @@ Formato output JSON:
 Mantieni ogni sezione concisa (2-3 frasi max). Focalizzati sulle informazioni critiche per il passaggio di consegne.`;
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
