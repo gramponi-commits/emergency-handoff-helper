@@ -7,24 +7,37 @@ import {
   ClinicalData, 
   PatientRecord,
   PatientReminder,
+  ArchivedPatient,
   emptyPatientIdentity, 
   emptyClinicalData,
   createPatientRecord,
   HandoverPayload 
 } from '@/types/patient';
 import { MultiPartPayload } from '@/lib/qr-multipart';
-import { savePatientList, loadPatientListClinical, appendAuditLog, clearAllStorage } from '@/lib/storage';
+import { 
+  savePatientList, 
+  loadPatientListClinical, 
+  appendAuditLog, 
+  clearAllStorage,
+  savePatientIdentities,
+  loadPatientIdentities,
+  saveArchivedPatients,
+  loadArchivedPatients,
+} from '@/lib/storage';
 import { generateHash, generateSessionToken } from '@/lib/crypto';
 import { toast } from '@/hooks/use-toast';
 
 interface PatientContextType {
   patients: PatientRecord[];
+  archivedPatients: ArchivedPatient[];
   currentPatientId: string | null;
   currentPatient: PatientRecord | null;
   addPatient: () => string;
   removePatient: (patientId: string) => void;
+  permanentlyDeletePatient: (patientId: string) => Promise<void>;
   selectPatient: (patientId: string | null) => void;
   getIdentity: (patientId: string) => PatientIdentity;
+  getArchivedIdentity: (patientId: string) => PatientIdentity;
   identity: PatientIdentity;
   clinical: ClinicalData;
   updateIdentity: (updates: Partial<PatientIdentity>) => void;
@@ -46,8 +59,10 @@ const PatientContext = createContext<PatientContextType | null>(null);
 
 export function PatientProvider({ children }: { children: ReactNode }) {
   const [patients, setPatients] = useState<PatientRecord[]>([]);
+  const [archivedPatients, setArchivedPatients] = useState<ArchivedPatient[]>([]);
   const [currentPatientId, setCurrentPatientId] = useState<string | null>(null);
   const identitiesRef = useRef<Map<string, PatientIdentity>>(new Map());
+  const archivedIdentitiesRef = useRef<Map<string, PatientIdentity>>(new Map());
   const [sessionToken, setSessionToken] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -55,21 +70,37 @@ export function PatientProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const loadData = async () => {
+      // Load identities from storage
+      const savedIdentities = await loadPatientIdentities();
+      identitiesRef.current = savedIdentities;
+      
+      // Load clinical data
       const savedClinical = await loadPatientListClinical();
       if (savedClinical.length > 0) {
         const loadedPatients: PatientRecord[] = savedClinical.map(c => ({
           id: c.id,
-          identity: emptyPatientIdentity,
+          identity: savedIdentities.get(c.id) || emptyPatientIdentity,
           clinical: c.clinical,
           reminders: c.reminders || [],
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         }));
         setPatients(loadedPatients);
+        // Ensure identities ref has all loaded patients
         loadedPatients.forEach(p => {
-          identitiesRef.current.set(p.id, emptyPatientIdentity);
+          if (!identitiesRef.current.has(p.id)) {
+            identitiesRef.current.set(p.id, emptyPatientIdentity);
+          }
         });
       }
+      
+      // Load archived patients
+      const savedArchived = await loadArchivedPatients();
+      setArchivedPatients(savedArchived);
+      savedArchived.forEach(p => {
+        archivedIdentitiesRef.current.set(p.id, p.identity);
+      });
+      
       setSessionToken(generateSessionToken());
       setIsLoaded(true);
     };
@@ -116,11 +147,24 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [patients]);
 
+  // Save patients and identities when they change
   useEffect(() => {
     if (isLoaded && patients.length > 0) {
       savePatientList(patients);
+      savePatientIdentities(identitiesRef.current);
+    } else if (isLoaded && patients.length === 0) {
+      // Clear storage if no patients
+      savePatientList([]);
+      savePatientIdentities(new Map());
     }
   }, [patients, isLoaded]);
+
+  // Save archived patients when they change
+  useEffect(() => {
+    if (isLoaded) {
+      saveArchivedPatients(archivedPatients);
+    }
+  }, [archivedPatients, isLoaded]);
 
   const addPatient = useCallback(() => {
     const newPatient = createPatientRecord();
@@ -131,12 +175,40 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removePatient = useCallback((patientId: string) => {
+    const patient = patients.find(p => p.id === patientId);
+    const identity = identitiesRef.current.get(patientId) || emptyPatientIdentity;
+    
+    if (patient) {
+      // Move to archive instead of deleting
+      const archivedPatient: ArchivedPatient = {
+        id: patient.id,
+        identity,
+        clinical: patient.clinical,
+        reminders: patient.reminders,
+        createdAt: patient.createdAt,
+        updatedAt: patient.updatedAt,
+        archivedAt: new Date().toISOString(),
+      };
+      
+      archivedIdentitiesRef.current.set(patientId, identity);
+      setArchivedPatients(prev => [...prev, archivedPatient]);
+    }
+    
     identitiesRef.current.delete(patientId);
     setPatients(prev => prev.filter(p => p.id !== patientId));
     if (currentPatientId === patientId) {
       setCurrentPatientId(null);
     }
-  }, [currentPatientId]);
+  }, [currentPatientId, patients]);
+
+  const permanentlyDeletePatient = useCallback(async (patientId: string) => {
+    archivedIdentitiesRef.current.delete(patientId);
+    setArchivedPatients(prev => prev.filter(p => p.id !== patientId));
+    toast({
+      title: 'Paziente eliminato',
+      description: 'Il paziente è stato eliminato definitivamente.',
+    });
+  }, []);
 
   const selectPatient = useCallback((patientId: string | null) => {
     setCurrentPatientId(patientId);
@@ -148,6 +220,9 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     const current = identitiesRef.current.get(currentPatientId) || emptyPatientIdentity;
     const updated = { ...current, ...updates };
     identitiesRef.current.set(currentPatientId, updated);
+    
+    // Save identities immediately
+    savePatientIdentities(identitiesRef.current);
     
     setPatients(prev => prev.map(p => 
       p.id === currentPatientId 
@@ -174,6 +249,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   const wipeCurrentIdentity = useCallback(() => {
     if (!currentPatientId) return;
     identitiesRef.current.set(currentPatientId, { ...emptyPatientIdentity });
+    savePatientIdentities(identitiesRef.current);
     setPatients(prev => prev.map(p => 
       p.id === currentPatientId 
         ? { ...p, identity: { ...emptyPatientIdentity } }
@@ -187,7 +263,9 @@ export function PatientProvider({ children }: { children: ReactNode }) {
 
   const wipeAllSession = useCallback(() => {
     identitiesRef.current.clear();
+    archivedIdentitiesRef.current.clear();
     setPatients([]);
+    setArchivedPatients([]);
     setCurrentPatientId(null);
     clearAllStorage();
     setSessionToken(generateSessionToken());
@@ -199,6 +277,10 @@ export function PatientProvider({ children }: { children: ReactNode }) {
 
   const getIdentity = useCallback((patientId: string): PatientIdentity => {
     return identitiesRef.current.get(patientId) || emptyPatientIdentity;
+  }, []);
+
+  const getArchivedIdentity = useCallback((patientId: string): PatientIdentity => {
+    return archivedIdentitiesRef.current.get(patientId) || emptyPatientIdentity;
   }, []);
 
   const prepareHandoverPayload = useCallback((): HandoverPayload | null => {
@@ -215,6 +297,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   const receiveHandover = useCallback(async (payload: HandoverPayload, receiverId: string) => {
     const newPatient = createPatientRecord(payload.identity, payload.clinical);
     identitiesRef.current.set(newPatient.id, payload.identity);
+    savePatientIdentities(identitiesRef.current);
     setPatients(prev => [...prev, newPatient]);
     setCurrentPatientId(newPatient.id);
 
@@ -253,6 +336,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       });
     }
 
+    savePatientIdentities(identitiesRef.current);
     setPatients(prev => [...prev, ...newPatients]);
     
     toast({
@@ -332,12 +416,15 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   return (
     <PatientContext.Provider value={{
       patients,
+      archivedPatients,
       currentPatientId,
       currentPatient,
       addPatient,
       removePatient,
+      permanentlyDeletePatient,
       selectPatient,
       getIdentity,
+      getArchivedIdentity,
       identity,
       clinical,
       updateIdentity,

@@ -131,6 +131,20 @@ export interface HandoverPayload {
 }
 
 /**
+ * Archived Patient Record
+ * Patients moved here when removed from active list
+ */
+export interface ArchivedPatient {
+  id: string;
+  identity: PatientIdentity;
+  clinical: ClinicalData;
+  reminders: PatientReminder[];
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string;
+}
+
+/**
  * Empty patient identity for initialization
  */
 export const emptyPatientIdentity: PatientIdentity = {
