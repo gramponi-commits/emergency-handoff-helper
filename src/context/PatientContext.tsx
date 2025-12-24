@@ -304,7 +304,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     const hashInput = `${payload.identity.name}|${payload.clinical.situation}|${payload.timestamp}`;
     const hash = await generateHash(hashInput);
     
-    appendAuditLog({
+    await appendAuditLog({
       hash,
       timestamp: new Date().toISOString(),
       receiverId,
@@ -328,7 +328,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       const hashInput = `${p.identity.name}|${p.clinical.situation}|${payload.timestamp}`;
       const hash = await generateHash(hashInput);
       
-      appendAuditLog({
+      await appendAuditLog({
         hash,
         timestamp: new Date().toISOString(),
         receiverId,
@@ -351,7 +351,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     const hashInput = `${identity.name}|${currentPatient.clinical.situation}|${new Date().toISOString()}`;
     const hash = await generateHash(hashInput);
     
-    appendAuditLog({
+    await appendAuditLog({
       hash,
       timestamp: new Date().toISOString(),
       receiverId,
@@ -368,7 +368,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       const hashInput = `${identity.name}|${patient.clinical.situation}|${new Date().toISOString()}`;
       const hash = await generateHash(hashInput);
       
-      appendAuditLog({
+      await appendAuditLog({
         hash,
         timestamp: new Date().toISOString(),
         receiverId,

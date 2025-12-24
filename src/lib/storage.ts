@@ -1,8 +1,17 @@
 // Storage Service for AcuteHandoff
 // Handles encrypted persistence of Vault B (Clinical Data) and Patient List
+// Security: All data validated with Zod schemas after JSON.parse()
 
 import { ClinicalData, HandoverLogEntry, PatientRecord, PatientReminder, PatientIdentity, ArchivedPatient } from '@/types/patient';
 import { encryptData, decryptData } from './crypto';
+import { 
+  ClinicalDataSchema, 
+  PatientListClinicalSchema, 
+  HandoverLogEntrySchema,
+  PatientIdentitySchema,
+  ArchivedPatientSchema 
+} from '@/types/patient-schemas';
+import { z } from 'zod';
 
 const CLINICAL_DATA_KEY = 'acutehandoff-clinical';
 const AUDIT_LOG_KEY = 'acutehandoff-audit';
@@ -24,7 +33,7 @@ export async function saveClinicalData(data: ClinicalData): Promise<void> {
 }
 
 /**
- * Load clinical data from encrypted localStorage
+ * Load clinical data from encrypted localStorage with Zod validation
  */
 export async function loadClinicalData(): Promise<ClinicalData | null> {
   try {
@@ -32,7 +41,16 @@ export async function loadClinicalData(): Promise<ClinicalData | null> {
     if (!encrypted) return null;
     
     const decrypted = await decryptData(encrypted);
-    return JSON.parse(decrypted);
+    const rawData = JSON.parse(decrypted);
+    
+    // Validate with Zod schema
+    const result = ClinicalDataSchema.safeParse(rawData);
+    if (!result.success) {
+      console.error('Invalid clinical data format:', result.error);
+      return null;
+    }
+    
+    return result.data as ClinicalData;
   } catch (error) {
     console.error('Failed to load clinical data:', error);
     return null;
@@ -68,7 +86,7 @@ export async function savePatientList(patients: PatientRecord[]): Promise<void> 
 }
 
 /**
- * Load patient list clinical data
+ * Load patient list clinical data with Zod validation
  */
 export async function loadPatientListClinical(): Promise<Array<{
   id: string;
@@ -82,7 +100,23 @@ export async function loadPatientListClinical(): Promise<Array<{
     if (!encrypted) return [];
     
     const decrypted = await decryptData(encrypted);
-    return JSON.parse(decrypted);
+    const rawData = JSON.parse(decrypted);
+    
+    // Validate with Zod schema array
+    const arraySchema = z.array(PatientListClinicalSchema);
+    const result = arraySchema.safeParse(rawData);
+    if (!result.success) {
+      console.error('Invalid patient list format:', result.error);
+      return [];
+    }
+    
+    return result.data as Array<{
+      id: string;
+      clinical: ClinicalData;
+      reminders?: PatientReminder[];
+      createdAt: string;
+      updatedAt: string;
+    }>;
   } catch (error) {
     console.error('Failed to load patient list:', error);
     return [];
@@ -90,25 +124,58 @@ export async function loadPatientListClinical(): Promise<Array<{
 }
 
 /**
- * Append entry to audit log
+ * Append entry to audit log (now encrypted)
  */
-export function appendAuditLog(entry: HandoverLogEntry): void {
+export async function appendAuditLog(entry: HandoverLogEntry): Promise<void> {
   try {
-    const existing = getAuditLog();
+    const existing = await getAuditLog();
     existing.push(entry);
-    localStorage.setItem(AUDIT_LOG_KEY, JSON.stringify(existing));
+    const encrypted = await encryptData(JSON.stringify(existing));
+    localStorage.setItem(AUDIT_LOG_KEY, encrypted);
   } catch (error) {
     console.error('Failed to append audit log:', error);
   }
 }
 
 /**
- * Get audit log entries
+ * Get audit log entries with Zod validation (now decrypted)
  */
-export function getAuditLog(): HandoverLogEntry[] {
+export async function getAuditLog(): Promise<HandoverLogEntry[]> {
   try {
     const data = localStorage.getItem(AUDIT_LOG_KEY);
-    return data ? JSON.parse(data) : [];
+    if (!data) return [];
+    
+    // Try to decrypt (new encrypted format)
+    try {
+      const decrypted = await decryptData(data);
+      const rawData = JSON.parse(decrypted);
+      
+      // Validate with Zod schema array
+      const arraySchema = z.array(HandoverLogEntrySchema);
+      const result = arraySchema.safeParse(rawData);
+      if (!result.success) {
+        console.error('Invalid audit log format:', result.error);
+        return [];
+      }
+      
+      return result.data as HandoverLogEntry[];
+    } catch {
+      // Fallback: Try parsing as unencrypted (migration from old format)
+      try {
+        const rawData = JSON.parse(data);
+        const arraySchema = z.array(HandoverLogEntrySchema);
+        const result = arraySchema.safeParse(rawData);
+        if (result.success) {
+          // Migrate to encrypted format
+          const encrypted = await encryptData(JSON.stringify(result.data));
+          localStorage.setItem(AUDIT_LOG_KEY, encrypted);
+          return result.data as HandoverLogEntry[];
+        }
+      } catch {
+        // Both failed, return empty
+      }
+      return [];
+    }
   } catch {
     return [];
   }
@@ -121,11 +188,13 @@ export function clearAllStorage(): void {
   localStorage.removeItem(CLINICAL_DATA_KEY);
   localStorage.removeItem(PATIENT_LIST_KEY);
   localStorage.removeItem(IDENTITIES_KEY);
+  localStorage.removeItem(AUDIT_LOG_KEY);
+  localStorage.removeItem(ARCHIVE_KEY);
   sessionStorage.removeItem('acutehandoff-key');
 }
 
 /**
- * Save patient identities to encrypted localStorage
+ * Save patient identities to encrypted localStorage with Zod validation
  */
 export async function savePatientIdentities(identities: Map<string, PatientIdentity>): Promise<void> {
   try {
@@ -138,7 +207,7 @@ export async function savePatientIdentities(identities: Map<string, PatientIdent
 }
 
 /**
- * Load patient identities from encrypted localStorage
+ * Load patient identities from encrypted localStorage with Zod validation
  */
 export async function loadPatientIdentities(): Promise<Map<string, PatientIdentity>> {
   try {
@@ -146,8 +215,20 @@ export async function loadPatientIdentities(): Promise<Map<string, PatientIdenti
     if (!encrypted) return new Map();
     
     const decrypted = await decryptData(encrypted);
-    const obj = JSON.parse(decrypted);
-    return new Map(Object.entries(obj));
+    const rawData = JSON.parse(decrypted);
+    
+    // Validate each identity with Zod schema
+    const validatedEntries: [string, PatientIdentity][] = [];
+    for (const [key, value] of Object.entries(rawData)) {
+      const result = PatientIdentitySchema.safeParse(value);
+      if (result.success) {
+        validatedEntries.push([key, result.data as PatientIdentity]);
+      } else {
+        console.error(`Invalid identity for key ${key}:`, result.error);
+      }
+    }
+    
+    return new Map(validatedEntries);
   } catch (error) {
     console.error('Failed to load patient identities:', error);
     return new Map();
@@ -167,7 +248,7 @@ export async function saveArchivedPatients(patients: ArchivedPatient[]): Promise
 }
 
 /**
- * Load archived patients from encrypted localStorage
+ * Load archived patients from encrypted localStorage with Zod validation
  */
 export async function loadArchivedPatients(): Promise<ArchivedPatient[]> {
   try {
@@ -175,7 +256,17 @@ export async function loadArchivedPatients(): Promise<ArchivedPatient[]> {
     if (!encrypted) return [];
     
     const decrypted = await decryptData(encrypted);
-    return JSON.parse(decrypted);
+    const rawData = JSON.parse(decrypted);
+    
+    // Validate with Zod schema array
+    const arraySchema = z.array(ArchivedPatientSchema);
+    const result = arraySchema.safeParse(rawData);
+    if (!result.success) {
+      console.error('Invalid archived patients format:', result.error);
+      return [];
+    }
+    
+    return result.data as ArchivedPatient[];
   } catch (error) {
     console.error('Failed to load archived patients:', error);
     return [];
