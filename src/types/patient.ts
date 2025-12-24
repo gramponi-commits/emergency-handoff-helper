@@ -57,6 +57,19 @@ export const PENDING_LABELS: Record<PendingType, string> = {
 };
 
 /**
+ * Patient Areas (where patient is located)
+ */
+export const PATIENT_AREAS = ['OTI', 'OBI', 'ISO', 'Reparto'] as const;
+export type PatientArea = typeof PATIENT_AREAS[number];
+
+export const PATIENT_AREA_LABELS: Record<PatientArea, string> = {
+  'OTI': 'OTI - Osservazione Temporanea Intensiva',
+  'OBI': 'OBI - Osservazione Breve Intensiva',
+  'ISO': 'ISO - Isolamento',
+  'Reparto': 'Reparto',
+};
+
+/**
  * Vault A - Patient Identity (RAM ONLY)
  * NEVER persisted to storage. Wiped on app close/refresh.
  * Only transferred via encrypted QR code.
@@ -67,6 +80,7 @@ export interface PatientIdentity {
   bedNumber: string;
   admissionDate: string;
   triage: TriageLevel;
+  area: PatientArea | string | null; // Can be preset or custom
   comorbidities: Comorbidity[];
   allergico: boolean;
   sociale: boolean;
@@ -153,6 +167,7 @@ export const emptyPatientIdentity: PatientIdentity = {
   bedNumber: '',
   admissionDate: new Date().toISOString().split('T')[0],
   triage: 'verde',
+  area: null,
   comorbidities: [],
   allergico: false,
   sociale: false,

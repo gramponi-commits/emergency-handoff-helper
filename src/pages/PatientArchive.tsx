@@ -192,6 +192,11 @@ export default function PatientArchive() {
                               {identity.age && (
                                 <span>{identity.age} anni</span>
                               )}
+                              {identity.area && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {identity.area}
+                                </Badge>
+                              )}
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
                                 Archiviato: {formatDate(patient.archivedAt)}

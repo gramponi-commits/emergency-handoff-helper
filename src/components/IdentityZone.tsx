@@ -1,13 +1,14 @@
 // Identity Zone Component
-// Security: This data is stored in RAM ONLY - never persisted
 
-import { AlertTriangle, User, Heart, AlertCircle, Users } from 'lucide-react';
+import { useState } from 'react';
+import { User, Heart, AlertCircle, Users, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
   PatientIdentity, COMORBIDITIES, ESITI, ESITI_LABELS, Comorbidity, Esito,
-  TRIAGE_LEVELS, TRIAGE_LABELS, TRIAGE_COLORS, TriageLevel
+  TRIAGE_LEVELS, TRIAGE_LABELS, TRIAGE_COLORS, TriageLevel,
+  PATIENT_AREAS, PatientArea
 } from '@/types/patient';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +18,8 @@ interface IdentityZoneProps {
 }
 
 export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
+  const [customArea, setCustomArea] = useState('');
+
   const toggleComorbidity = (comorbidity: Comorbidity) => {
     const current = identity.comorbidities || [];
     const updated = current.includes(comorbidity)
@@ -33,16 +36,28 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
     onUpdate({ triage });
   };
 
+  const setArea = (area: PatientArea | string | null) => {
+    onUpdate({ area: identity.area === area ? null : area });
+  };
+
+  const handleCustomArea = () => {
+    if (customArea.trim()) {
+      onUpdate({ area: customArea.trim() });
+      setCustomArea('');
+    }
+  };
+
+  const isPresetArea = (area: string | null): area is PatientArea => {
+    return PATIENT_AREAS.includes(area as PatientArea);
+  };
+
   return (
     <div className="zone-identity rounded-lg p-4 space-y-4">
-      {/* Security Warning Header */}
-      <div className="flex items-center gap-2 text-destructive">
-        <AlertTriangle className="h-5 w-5 pulse-warning" />
+      {/* Header */}
+      <div className="flex items-center gap-2 text-primary">
+        <User className="h-5 w-5" />
         <span className="font-semibold text-sm uppercase tracking-wide">
-          Identità (Solo RAM)
-        </span>
-        <span className="text-xs text-muted-foreground ml-auto">
-          Cancellato alla chiusura
+          Identità Paziente
         </span>
       </div>
 
@@ -115,6 +130,58 @@ export function IdentityZone({ identity, onUpdate }: IdentityZoneProps) {
             placeholder="es. A-12"
             className="bg-background/50 border-destructive/30 focus:border-destructive font-mono text-lg font-bold"
           />
+        </div>
+      </div>
+
+      {/* Patient Area */}
+      <div className="space-y-2">
+        <Label className="text-muted-foreground flex items-center gap-2">
+          <MapPin className="h-3 w-3" />
+          Area Paziente
+        </Label>
+        <div className="flex flex-wrap gap-2">
+          {PATIENT_AREAS.map((area) => (
+            <Badge
+              key={area}
+              variant="outline"
+              className={cn(
+                "cursor-pointer transition-all hover:scale-105 select-none px-3 py-1",
+                identity.area === area
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background/50 hover:bg-muted"
+              )}
+              onClick={() => setArea(area)}
+            >
+              {area}
+            </Badge>
+          ))}
+          {/* Show custom area if set and not a preset */}
+          {identity.area && !isPresetArea(identity.area) && (
+            <Badge
+              variant="outline"
+              className="bg-primary text-primary-foreground border-primary cursor-pointer"
+              onClick={() => setArea(null)}
+            >
+              {identity.area} ✕
+            </Badge>
+          )}
+        </div>
+        {/* Custom area input */}
+        <div className="flex gap-2 mt-2">
+          <Input
+            placeholder="Area personalizzata..."
+            value={customArea}
+            onChange={(e) => setCustomArea(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCustomArea()}
+            className="bg-background/50 border-border max-w-[200px]"
+          />
+          <Badge
+            variant="outline"
+            className="cursor-pointer hover:bg-muted px-3 py-1"
+            onClick={handleCustomArea}
+          >
+            + Aggiungi
+          </Badge>
         </div>
       </div>
 
